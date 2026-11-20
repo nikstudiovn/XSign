@@ -4,38 +4,44 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: write
+
 jobs:
-  build:
-    runs-on: macos-latest
+  update:
+    runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: main
 
-      - name: Dependencies
-        run: brew install jq
-
       - name: Update app-repo.json
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+          DATE: ${{ github.event.release.published_at }}
+          ASSETS: ${{ toJSON(github.event.release.assets) }}
+          REPO: ${{ github.repository }}
         run: |
-          TAG="${{ github.event.release.tag_name }}"
-          DATE="${{ github.event.release.published_at }}"
           VERSION="${TAG#v}"
-
-          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/Feather.ipa"
+          DOWNLOAD_URL="https://github.com/${REPO}/releases/download/${TAG}/XSign.ipa"
+          SIZE=$(echo "$ASSETS" | jq '[.[] | select(.name == "XSign.ipa") | .size][0] // 0')
 
           jq \
             --arg version "$VERSION" \
             --arg date "$DATE" \
             --arg url "$DOWNLOAD_URL" \
+            --argjson size "$SIZE" \
             '
             .apps[0].version = $version |
             .apps[0].versionDate = $date |
             .apps[0].downloadURL = $url |
-            .apps[0].versions[0].version = $version |
-            .apps[0].versions[0].date = $date |
-            .apps[0].versions[0].downloadURL = $url
+            .apps[0].size = $size |
+            .apps[0].versions = (
+              [{version: $version, date: $date, size: $size, downloadURL: $url}]
+              + ((.apps[0].versions // []) | map(select(.version != $version and (.size // 0) > 0)))
+            )
             ' app-repo.json > tmp.json
 
           mv tmp.json app-repo.json
