@@ -16,7 +16,7 @@ struct InstallPreviewView: View {
 
 	@AppStorage("Feather.useShareSheetForArchiving") private var _useShareSheet: Bool = false
 	@AppStorage("Feather.installationMethod") private var _installationMethod: Int = 0
-	@AppStorage("Feather.serverMethod") private var _serverMethod: Int = 0
+	@AppStorage("Feather.serverMethod") private var _serverMethod: Int = 1
 	@State private var _isWebviewPresenting = false
 	@State private var progressTask: Task<Void, Never>?
 	
@@ -59,10 +59,8 @@ struct InstallPreviewView: View {
 		.onReceive(viewModel.$status) { newStatus in
 			if _installationMethod == 0 {
 				if case .ready = newStatus {
-					if _serverMethod == 0 {
-						UIApplication.shared.open(URL(string: installer.iTunesLink)!)
-					} else if _serverMethod == 1 {
-						_isWebviewPresenting = true
+					if _serverMethod == 0 || _serverMethod == 1 {
+						if let url = URL(string: installer.iTunesLink) { UIApplication.shared.open(url) }
 					}
 				}
 				
