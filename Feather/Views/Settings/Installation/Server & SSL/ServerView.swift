@@ -49,7 +49,7 @@ extension ServerView {
 // MARK: - View
 struct ServerView: View {
 	@AppStorage("Feather.ipFix") private var _ipFix: Bool = false
-	@AppStorage("Feather.serverMethod") private var _serverMethod: Int = 0
+	@AppStorage("Feather.serverMethod") private var _serverMethod: Int = 1
 	private let _serverMethods: [String] = [.localized("Fully Local"), .localized("Semi Local")]
 	
 	private let _dataService = NBFetchService()
@@ -60,10 +60,9 @@ struct ServerView: View {
 		Group {
 			Section {
 				Picker(.localized("Server Type"), systemImage: "server.rack", selection: $_serverMethod) {
-					ForEach(_serverMethods.indices, id: \.description) { index in
-						Text(_serverMethods[index]).tag(index)
-					}
+					Text(_serverMethods[1]).tag(1)
 				}
+				.onAppear { if _serverMethod != 1 { _serverMethod = 1 } }
 				Toggle(.localized("Only use localhost address"), systemImage: "lifepreserver", isOn: $_ipFix)
 					.disabled(_serverMethod != 1)
 			}
