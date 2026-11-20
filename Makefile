@@ -3,7 +3,12 @@ SCHEME := Feather
 PLATFORMS := iphoneos
 
 TMP := $(TMPDIR)/$(NAME)
-CERT_JSON_URL := https://backloop.dev/pack.json
+
+# Optional SSL pack (same JSON format as the former backloop.dev pack.json) used only by
+# the "Fully Local" server mode. backloop.dev was discontinued, so this is empty by default
+# and XSign installs through Semi Local mode. Example:
+#   make CERT_JSON_URL=https://example.com/pack.json
+CERT_JSON_URL ?=
 
 .PHONY: all clean deps $(PLATFORMS)
 
@@ -18,10 +23,14 @@ deps:
 	rm -rf deps || true
 	mkdir -p deps
 
-	curl -fsSL "$(CERT_JSON_URL)" -o cert.json
-	jq -r '.cert' cert.json > deps/server.crt
-	jq -r '.key1, .key2' cert.json > deps/server.pem
-	jq -r '.info.domains.commonName' cert.json > deps/commonName.txt
+	@if [ -n "$(CERT_JSON_URL)" ]; then \
+		curl -fsSL "$(CERT_JSON_URL)" -o cert.json && \
+		jq -r '.cert' cert.json > deps/server.crt && \
+		jq -r '.key1, .key2' cert.json > deps/server.pem && \
+		jq -r '.info.domains.commonName' cert.json > deps/commonName.txt; \
+	else \
+		echo "CERT_JSON_URL not set, skipping SSL pack (Semi Local mode only)"; \
+	fi
 
 
 $(PLATFORMS): deps
@@ -46,12 +55,12 @@ $(PLATFORMS): deps
 	cp -R _build/Applications/*.app _build/Payload/XSign.app
 	chmod -R 0755 _build/Payload/XSign.app
 	codesign --force --sign - --timestamp=none _build/Payload/XSign.app
-	cp deps/* _build/Payload/XSign.app/ || true
+	cp deps/* _build/Payload/XSign.app/ 2>/dev/null || true
 
 	mkdir -p packages
 
 	@if [ "$@" = "iphoneos" ]; then \
 		ditto -c -k --sequesterRsrc --keepParent _build/Payload "packages/XSign.ipa"; \
 	else \
-		ditto -c -k --sequesterRsrc --keepParent _build/Payload/XSign.app "packages/Feather_Catalyst.zip"; \
+		ditto -c -k --sequesterRsrc --keepParent _build/Payload/XSign.app "packages/XSign_Catalyst.zip"; \
 	fi

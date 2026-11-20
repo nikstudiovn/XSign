@@ -101,11 +101,11 @@ class ServerInstaller: Identifiable, ObservableObject {
 		}
 	}
 		
+	/// XSign: "Fully Local" (0) relied on the backloop.dev SSL pack, which was discontinued
+	/// (certificate expired 2026-10-29). Always use "Semi Local" (1), regardless of any value
+	/// stored by older versions, so existing users are not stuck on a broken mode.
 	func getServerMethod() -> Int {
-		if UserDefaults.standard.object(forKey: "Feather.serverMethod") == nil{
-			return 1
-		}
-		return UserDefaults.standard.integer(forKey: "Feather.serverMethod")
+		return 1
 	}
 	
 	func getIPFix() -> Bool {

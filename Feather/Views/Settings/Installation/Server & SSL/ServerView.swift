@@ -52,10 +52,9 @@ struct ServerView: View {
 	@AppStorage("Feather.serverMethod") private var _serverMethod: Int = 1
 	private let _serverMethods: [String] = [.localized("Fully Local"), .localized("Semi Local")]
 	
-	private let _dataService = NBFetchService()
-	private let _serverPackUrl = "https://backloop.dev/pack.json"
-	
 	// MARK: Body
+	// XSign: "Fully Local" and "Update SSL Certificates" are hidden because the
+	// backloop.dev SSL pack they depend on was discontinued.
 	var body: some View {
 		Group {
 			Section {
@@ -64,29 +63,6 @@ struct ServerView: View {
 				}
 				.onAppear { if _serverMethod != 1 { _serverMethod = 1 } }
 				Toggle(.localized("Only use localhost address"), systemImage: "lifepreserver", isOn: $_ipFix)
-					.disabled(_serverMethod != 1)
-			}
-			
-			Section {
-				Button(.localized("Update SSL Certificates"), systemImage: "arrow.down.doc") {
-					FR.downloadSSLCertificates(from: _serverPackUrl) { success in
-						if success {
-							DispatchQueue.main.async {
-								UIAlertController.showAlertWithOk(
-									title: .localized("SSL Certificates"),
-									message: .localized("Certificates updated successfully.")
-								)
-							}
-						} else {
-							DispatchQueue.main.async {
-								UIAlertController.showAlertWithOk(
-									title: .localized("SSL Certificates"),
-									message: .localized("Failed to download, check your internet connection and try again.")
-								)
-							}
-						}
-					}
-				}
 			}
 		}
 	}
