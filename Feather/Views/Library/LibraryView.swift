@@ -30,6 +30,7 @@ struct LibraryView: View {
 	
 	@State private var _searchText = ""
 	@State private var _selectedScope: Scope = .all
+		@State private var _selectedLibrarySegment: Int = 0
 	
 	
 	@Namespace private var _namespace
@@ -72,10 +73,12 @@ struct LibraryView: View {
 	// MARK: Body
 	var body: some View {
 		NBNavigationView(.localized("Library")) {
-			NBListAdaptable {
+			NBListAdaptable { 
+				Section { Picker("", selection: $_selectedLibrarySegment) { Text("Đã nhập (\(_filteredImportedApps.count))").tag(0); Text("Đã ký (\(_filteredSignedApps.count))").tag(1) }.pickerStyle(.segmented) }
+				if _selectedLibrarySegment == 0 { Section { Button { _isBatchQueuePresenting = true } label: { Label("Chọn để ký hàng loạt", systemImage: "square.stack.3d.up") } } }
 				if
 					!_filteredSignedApps.isEmpty,
-					_selectedScope == .all || _selectedScope == .signed
+					_selectedLibrarySegment == 1
 				{
 					NBSection(
 						.localized("Signed"),
@@ -96,7 +99,7 @@ struct LibraryView: View {
 				
 				if
 					!_filteredImportedApps.isEmpty,
-					_selectedScope == .all || _selectedScope == .imported
+					_selectedLibrarySegment == 0
 				{
 					NBSection(
 						.localized("Imported"),
