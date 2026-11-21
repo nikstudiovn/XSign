@@ -24,6 +24,8 @@ struct InstallPreviewView: View {
 	/// XSign: guards against opening the itms-services link more than once,
 	/// which showed the iOS install prompt twice.
 	@State private var _didOpenInstallLink = false
+	/// XSign: Lock Screen / Dynamic Island progress for this install.
+	@State private var _liveActivity = InstallActivityController()
 	
 	var app: AppInfoPresentable
 	@StateObject var viewModel: InstallerStatusViewModel
@@ -77,6 +79,8 @@ struct InstallPreviewView: View {
 			SafariRepresentableView(url: installer.pageEndpoint).ignoresSafeArea()
 		}
 		.onReceive(viewModel.$status) { newStatus in
+			_liveActivity.update(status: newStatus, progress: viewModel.overallProgress)
+			
 			if _installationMethod == 0 {
 				if case .ready = newStatus, !_didOpenInstallLink {
 					// XSign: open the itms-services link directly with an HTTPS manifest.
@@ -123,6 +127,10 @@ struct InstallPreviewView: View {
 				}
 			}
 		}
+		// XSign: progress-only updates; the controller throttles them.
+		.onChange(of: viewModel.overallProgress) { newProgress in
+			_liveActivity.update(progress: newProgress)
+		}
 		.onAppear(perform: _install)
 		
 		#if !targetEnvironment(macCatalyst)
@@ -134,6 +142,7 @@ struct InstallPreviewView: View {
 		.onDisappear {
 			progressTask?.cancel()
 			progressTask = nil
+			_liveActivity.sheetDidClose()
 			
 			#if !targetEnvironment(macCatalyst)
 			BackgroundAudioManager.shared.stop()
@@ -178,6 +187,10 @@ struct InstallPreviewView: View {
 				message: .localized("You cannot update ‘%@‘ with itself, please use an alternative tool to update it.", arguments: Bundle.main.name)
 			)
 			return
+		}
+		
+		if !isSharing {
+			_liveActivity.start(app: app)
 		}
 				
 		Task.detached {
@@ -228,6 +241,7 @@ struct InstallPreviewView: View {
 				await progressTask?.cancel()
 				
 				await MainActor.run {
+					_liveActivity.fail(error)
 					UIAlertController.showAlertWithOk(
 						title: .localized("Install"),
 						message: String(describing: error),
@@ -248,6 +262,7 @@ struct InstallPreviewView: View {
 
 		Task.detached(priority: .background) {
 			var hasStarted = false
+			var lastLogged = -1.0
 
 			while !Task.isCancelled {
 				let rawProgress = await UIApplication.installProgress(for: bundleID) ?? 0.0
@@ -260,10 +275,18 @@ struct InstallPreviewView: View {
 					? _normalizeInstallProgress(rawProgress)
 					: 0.0
 
-				Logger.misc.info("Install progress for \(bundleID): \(progress)")
+				// XSign: log only real changes (was every loop).
+				if abs(progress - lastLogged) >= 0.05 || (progress == 1 && lastLogged != 1) {
+					lastLogged = progress
+					Logger.misc.info("Install progress for \(bundleID): \(progress)")
+				}
 
+				// XSign: only publish real changes, so SwiftUI does not redraw
+				// the sheet for identical values.
 				await MainActor.run {
-					viewModel.installProgress = progress
+					if viewModel.installProgress != progress {
+						viewModel.installProgress = progress
+					}
 				}
 
 				if hasStarted && rawProgress == 0 {
@@ -274,7 +297,10 @@ struct InstallPreviewView: View {
 					break
 				}
 
-				try? await Task.sleep(nanoseconds: 1_000_000) // 1 ms
+				// XSign: poll 4x per second instead of every 1 ms. The progress
+				// ring animates between values, so it still looks smooth while
+				// using far less CPU and battery.
+				try? await Task.sleep(nanoseconds: 250_000_000) // 250 ms
 			}
 		}
 	}
