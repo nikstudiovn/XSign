@@ -131,14 +131,29 @@ extension SettingsView {
 	@ViewBuilder
 	private func _directories() -> some View {
 		NBSection(.localized("Misc")) {
-			Button(.localized("Open Documents"), systemImage: "folder") {
-				UIApplication.open(URL.documentsDirectory.toSharedDocumentsURL()!)
+		NavigationLink {
+				XSignFolderBrowserView(
+					directory: URL.documentsDirectory,
+					title: .localized("Open Documents")
+				)
+			} label: {
+				Label(.localized("Open Documents"), systemImage: "folder")
 			}
-			Button(.localized("Open Archives"), systemImage: "folder") {
-				UIApplication.open(FileManager.default.archives.toSharedDocumentsURL()!)
+			NavigationLink {
+				XSignFolderBrowserView(
+					directory: FileManager.default.archives,
+					title: .localized("Open Archives")
+				)
+			} label: {
+				Label(.localized("Open Archives"), systemImage: "folder")
 			}
-			Button(.localized("Open Certificates"), systemImage: "folder") {
-				UIApplication.open(FileManager.default.certificates.toSharedDocumentsURL()!)
+			NavigationLink {
+				XSignFolderBrowserView(
+					directory: FileManager.default.certificates,
+					title: .localized("Open Certificates")
+				)
+			} label: {
+				Label(.localized("Open Certificates"), systemImage: "folder")
 			}
 		} footer: {
 			Text(.localized("All of the apps files are contained in the documents directory, here are some quick links to these."))
