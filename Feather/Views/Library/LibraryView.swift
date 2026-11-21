@@ -23,6 +23,10 @@ struct LibraryView: View {
 	@State private var _alertDownloadString: String = "" // for _isDownloadingPresenting
 	@State private var _updateCheckRotation = 0.0
 	@State private var _isUpdateCheckCompleteVisible = false
+@FetchRequest(entity: CertificatePair.entity(), sortDescriptors: [NSSortDescriptor(keyPath: \CertificatePair.date, ascending: false)]) private var _quickCertificates: FetchedResults<CertificatePair>
+@AppStorage("XSign.selectedCert") private var _quickSelectedCertIndex: Int = 0
+@State private var _showQuickSignPrompt = false
+@State private var _promptApp: Imported? = nil
 	
 	// MARK: Selection State
 	@State private var _selectedAppUUIDs: Set<String> = []
@@ -213,6 +217,11 @@ struct LibraryView: View {
 							let dl = downloadManager.startArchive(from: url, id: id)
 							try? downloadManager.handlePachageFile(url: url, dl: dl)
 						}
+if urls.count == 1 {
+DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+NotificationCenter.default.post(name: Notification.Name("XSign.importedIPA"), object: nil)
+}
+}
 					}
 				)
 				.ignoresSafeArea()
@@ -234,6 +243,41 @@ struct LibraryView: View {
 					_selectedInstallAppPresenting = AnyApp(base: latest)
 				}
 			}
+.onReceive(NotificationCenter.default.publisher(for: Notification.Name("XSign.importedIPA"))) { _ in
+if let latest = _importedApps.first {
+_promptApp = latest
+_showQuickSignPrompt = true
+}
+}
+.alert("Ký & cài ngay?", isPresented: $_showQuickSignPrompt) {
+Button("Ký & cài ngay") {
+guard let app = _promptApp else { return }
+let cert = (_quickSelectedCertIndex >= 0 && _quickSelectedCertIndex < _quickCertificates.count)
+? _quickCertificates[_quickSelectedCertIndex]
+: _quickCertificates.first
+guard let cert else {
+UIAlertController.showAlertWithOk(title: "Thiếu chứng chỉ", message: "Vui lòng thêm chứng chỉ trong Cài đặt trước khi ký.")
+return
+}
+FR.signPackageFile(app, using: OptionsManager.shared.options, icon: nil, certificate: cert) { error in
+if let error {
+UIAlertController.showAlertWithOk(title: "Lỗi", message: error.localizedDescription)
+} else {
+DispatchQueue.main.async {
+NotificationCenter.default.post(name: Notification.Name("Feather.installApp"), object: nil)
+}
+}
+}
+}
+Button("Tùy chỉnh ký") {
+if let app = _promptApp {
+_selectedSigningAppPresenting = AnyApp(base: app)
+}
+}
+Button("Để sau", role: .cancel) { }
+} message: {
+Text("Bạn có muốn ký và cài đặt \(_promptApp?.name ?? "IPA") ngay không?")
+}
 			.onChange(of: _editMode) { mode in
 				if mode == .inactive {
 					_selectedAppUUIDs.removeAll()
