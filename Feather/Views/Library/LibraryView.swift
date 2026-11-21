@@ -339,10 +339,8 @@ NotificationCenter.default.post(name: Notification.Name("XSign.importedIPA"), ob
 					}
 				}
 			}
-			.onReceive(NotificationCenter.default.publisher(for: Notification.Name("XSign.installApp"))) { _ in
-				if let latest = _signedApps.first {
-					_selectedInstallAppPresenting = AnyApp(base: latest)
-				}
+			.onReceive(NotificationCenter.default.publisher(for: .xsignInstallApp)) { _ in
+				_presentInstallForLatestSigned()
 			}
 .onReceive(NotificationCenter.default.publisher(for: Notification.Name("XSign.importedIPA"))) { _ in
 if let latest = _importedApps.first {
@@ -360,13 +358,9 @@ guard let cert else {
 UIAlertController.showAlertWithOk(title: "Thiếu chứng chỉ", message: "Vui lòng thêm chứng chỉ trong Cài đặt trước khi ký.")
 return
 }
-FR.signPackageFile(app, using: OptionsManager.shared.options, icon: nil, certificate: cert) { error in
+XSignQuickSigner.signAndInstall(app, certificate: cert) { error in
 if let error {
 UIAlertController.showAlertWithOk(title: "Lỗi", message: error.localizedDescription)
-} else {
-DispatchQueue.main.async {
-NotificationCenter.default.post(name: Notification.Name("Feather.installApp"), object: nil)
-}
 }
 }
 }
@@ -400,6 +394,36 @@ extension LibraryView {
 		}
 		Button(.localized("Import from URL"), systemImage: "globe") {
 			_isDownloadingPresenting = true
+		}
+	}
+}
+
+// MARK: - Extension: Auto install after signing
+extension LibraryView {
+	/// Mở InstallPreviewView (Semi Local OTA) cho ứng dụng vừa ký gần nhất.
+	/// Đợi màn hình ký (fullScreenCover) đóng hẳn, nếu không SwiftUI sẽ bỏ qua yêu cầu present.
+	private func _presentInstallForLatestSigned(attempt: Int = 0) {
+		if _selectedSigningAppPresenting != nil, attempt < 15 {
+			DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+				_presentInstallForLatestSigned(attempt: attempt + 1)
+			}
+			return
+		}
+		
+		let request = NSFetchRequest<Signed>(entityName: "Signed")
+		request.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
+		request.fetchLimit = 1
+		guard let latest = (try? Storage.shared.context.fetch(request))?.first ?? _signedApps.first else {
+			return
+		}
+		
+		if _selectedInstallAppPresenting != nil {
+			_selectedInstallAppPresenting = nil
+			DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+				_selectedInstallAppPresenting = AnyApp(base: latest)
+			}
+		} else {
+			_selectedInstallAppPresenting = AnyApp(base: latest)
 		}
 	}
 }

@@ -61,9 +61,17 @@ struct InstallPreviewView: View {
 		.onReceive(viewModel.$status) { status in
 			_updateLiveActivity(for: status)
 		}
+		.onChange(of: viewModel.overallProgress) { progress in
+			_updateLiveActivityProgress(progress)
+		}
 		.onDisappear {
-			// Đóng sheet khi chưa xong thì kết thúc activity để không bị treo.
-			XSignLiveActivityManager.shared.end(stage: .failed)
+			// Đóng sheet khi chưa xong thì gỡ activity để không bị treo.
+			switch viewModel.status {
+			case .completed, .broken:
+				break
+			default:
+				XSignLiveActivityManager.shared.cancel()
+			}
 		}
 		.sheet(isPresented: $_isWebviewPresenting) {
 			SafariRepresentableView(url: installer.pageEndpoint).ignoresSafeArea()
@@ -280,20 +288,34 @@ struct InstallPreviewView: View {
 // MARK: - Live Activity
 extension InstallPreviewView {
 	fileprivate func _updateLiveActivity(for status: InstallerStatusViewModel.InstallerStatus) {
+		guard !isSharing else { return }
 		let manager = XSignLiveActivityManager.shared
+		let progress = viewModel.overallProgress
 		switch status {
 		case .none, .ready:
-			manager.start(appName: app.name ?? "XSign", stage: .sending, progress: 0.1)
-		case .sendingManifest:
-			manager.update(stage: .sending, progress: 0.35)
-		case .sendingPayload:
-			manager.update(stage: .sending, progress: 0.6)
+			manager.start(appName: app.name ?? "XSign", stage: .sending, progress: progress)
+		case .sendingManifest, .sendingPayload:
+			manager.update(stage: .sending, progress: progress, force: true)
 		case .installing:
-			manager.update(stage: .installing, progress: 0.85)
+			manager.update(stage: .installing, progress: progress, force: true)
 		case .completed:
 			manager.end(stage: .completed)
 		case .broken:
 			manager.end(stage: .failed)
+		}
+	}
+	
+	/// Đẩy giá trị tiến độ thực tế (0.0 → 1.0) của InstallerStatusViewModel lên Live Activity.
+	fileprivate func _updateLiveActivityProgress(_ progress: Double) {
+		guard !isSharing else { return }
+		let manager = XSignLiveActivityManager.shared
+		switch viewModel.status {
+		case .installing:
+			manager.update(stage: .installing, progress: progress)
+		case .completed, .broken:
+			break
+		default:
+			manager.update(stage: .sending, progress: progress)
 		}
 	}
 }
