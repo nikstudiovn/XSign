@@ -35,14 +35,14 @@ struct SettingsView: View {
 
     
 	private let _donationsUrl = "https://github.com/sponsors/claration"
-	private let _githubUrl = "https://github.com/claration/Feather"
+	private let _githubUrl = "https://github.com/nikstudiovn/XSign"
     
 	// MARK: Body
 	var body: some View {
 		NBNavigationView(.localized("Settings")) {
 			Form {
 				#if !NIGHTLY && !DEBUG
-					SettingsDonationCellView(site: _donationsUrl)
+					// SettingsDonationCellView(site: _donationsUrl)
 				#endif
                 
 				_feedback()
@@ -119,6 +119,9 @@ extension SettingsView {
 			}
 			Button(.localized("GitHub Repository"), systemImage: "safari") {
 				UIApplication.open(_githubUrl)
+			} 
+			Button("Kênh Telegram (@nikvn21)", systemImage: "paperplane.fill") {
+				UIApplication.open("https://t.me/nikvn21")
 			}
 		} footer: {
 			Text(.localized("If any issues occur within the app please report it via the GitHub repository. When submitting an issue, make sure to submit detailed information."))
