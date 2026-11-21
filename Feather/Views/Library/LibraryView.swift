@@ -13,6 +13,12 @@ import NimbleViews
 struct LibraryView: View {
 	@StateObject var downloadManager = DownloadManager.shared
 	@StateObject var updateManager = UpdateManager.shared
+		@ObservedObject private var _presetManager = XSignPresetManager.shared
+	@ObservedObject private var _ocspCache = XSignOCSPCache.shared
+@FetchRequest(entity: CertificatePair.entity(), sortDescriptors: [NSSortDescriptor(keyPath: \CertificatePair.date, ascending: false)]) private var _libraryCertificates: FetchedResults<CertificatePair>
+@AppStorage("feather.selectedCert") private var _librarySelectedCertIndex: Int = 0
+@State private var _isSavingPresetAlertPresented = false
+@State private var _newPresetName = ""
 	
 	@State private var _selectedInfoAppPresenting: AnyApp?
 	@State private var _selectedSigningAppPresenting: AnyApp?
@@ -69,12 +75,95 @@ struct LibraryView: View {
 		sortDescriptors: [NSSortDescriptor(keyPath: \AltSource.name, ascending: true)],
 		animation: .snappy
 	) private var _sources: FetchedResults<AltSource>
+		private var _certificateWarningInfo: (title: String, message: String, color: Color, icon: String)? {
+		guard !_libraryCertificates.isEmpty, _librarySelectedCertIndex >= 0, _librarySelectedCertIndex < _libraryCertificates.count else {
+			return ("Chưa có chứng chỉ mặc định", "Vui lòng thêm hoặc chọn chứng chỉ trong Cài đặt.", .orange, "exclamationmark.triangle.fill")
+		}
+		let cert = _libraryCertificates[_librarySelectedCertIndex]
+		if cert.revoked || _ocspCache.status(for: cert) == .revoked {
+			return ("Chứng chỉ đã bị thu hồi", "Chứng chỉ mặc định hiện tại đã bị thu hồi.", .red, "xmark.octagon.fill")
+		}
+		if let expiration = cert.expiration {
+			if expiration <= Date() {
+				return ("Chứng chỉ đã hết hạn", "Chứng chỉ mặc định đã hết hạn.", .red, "exclamationmark.circle.fill")
+			}
+			let days = Calendar.current.dateComponents([.day], from: Date(), to: expiration).day ?? 0
+			if days <= 7 {
+				return ("Chứng chỉ sắp hết hạn", "Chứng chỉ mặc định còn \(days) ngày nữa sẽ hết hạn.", .orange, "exclamationmark.triangle.fill")
+			}
+		}
+		return nil
+		}
 	
 	// MARK: Body
 	var body: some View {
 		NBNavigationView(.localized("Library")) {
 			NBListAdaptable { 
+				if let warning = _certificateWarningInfo {
+					Section {
+						HStack(spacing: 12) {
+							Image(systemName: warning.icon)
+								.font(.title3)
+								.foregroundStyle(warning.color)
+							VStack(alignment: .leading, spacing: 2) {
+								Text(warning.title)
+									.font(.subheadline.weight(.semibold))
+								Text(warning.message)
+									.font(.caption)
+									.foregroundStyle(.secondary)
+							}
+							Spacer()
+						}
+						.padding(.vertical, 4)
+					}
+				}
 				Section { Picker("", selection: $_selectedLibrarySegment) { Text("Đã nhập (\(_filteredImportedApps.count))").tag(0); Text("Đã ký (\(_filteredSignedApps.count))").tag(1) }.pickerStyle(.segmented) }
+								if _selectedLibrarySegment == 0 {
+					Section {
+						Menu {
+							ForEach(_presetManager.builtInPresets) { preset in
+								Button {
+									_presetManager.selectDefault(preset.id)
+								} label: {
+									if _presetManager.activePreset.id == preset.id {
+										Label(preset.name, systemImage: "checkmark")
+									} else {
+										Text(preset.name)
+									}
+								}
+							}
+							if !_presetManager.customPresets.isEmpty {
+								Divider()
+								ForEach(_presetManager.customPresets) { preset in
+									Button {
+										_presetManager.selectDefault(preset.id)
+									} label: {
+										if _presetManager.activePreset.id == preset.id {
+											Label(preset.name, systemImage: "checkmark")
+										} else {
+											Text(preset.name)
+										}
+									}
+								}
+							}
+							Divider()
+							Button {
+								_newPresetName = ""
+								_isSavingPresetAlertPresented = true
+							} label: {
+								Label("Lưu cấu hình hiện tại làm Preset...", systemImage: "plus.circle")
+							}
+						} label: {
+							HStack {
+								Label("Preset: \(_presetManager.activePreset.name)", systemImage: "slider.horizontal.3")
+								Spacer()
+								Image(systemName: "chevron.up.chevron.down")
+									.font(.caption)
+									.foregroundStyle(.secondary)
+							}
+						}
+					}
+								}
 				if _selectedLibrarySegment == 0 { Section { Button { _isBatchQueuePresenting = true } label: { Label("Chọn để ký hàng loạt", systemImage: "square.stack.3d.up") } } }
 				if
 					!_filteredSignedApps.isEmpty,
@@ -125,6 +214,18 @@ struct LibraryView: View {
 				}
 			}
 			.scrollDismissesKeyboard(.interactively)
+			.alert("Lưu Preset ký", isPresented: $_isSavingPresetAlertPresented) {
+				TextField("Tên preset", text: $_newPresetName)
+				Button("Lưu") {
+					let trimmed = _newPresetName.trimmingCharacters(in: .whitespacesAndNewlines)
+					if !trimmed.isEmpty {
+						_presetManager.saveCustomPreset(name: trimmed, options: OptionsManager.shared.options)
+					}
+				}
+				Button("Hủy", role: .cancel) {}
+			} message: {
+				Text("Lưu cấu hình tùy chọn ký hiện tại thành một preset mới.")
+			}
 			.overlay {
 				if
 					_filteredSignedApps.isEmpty,
@@ -519,7 +620,7 @@ private struct XSignBatchQueueSheet: View {
 				let errorMessage: String? = await withCheckedContinuation { continuation in
 					FR.signPackageFile(
 						app,
-						using: OptionsManager.shared.options,
+						using: XSignPresetManager.shared.effectiveOptions, // using: OptionsManager.shared.options,
 						icon: nil,
 						certificate: cert
 					) { error in
@@ -544,3 +645,12 @@ private struct XSignBatchQueueSheet: View {
 	}
 }
 }
+private extension XSignPresetManager {
+	var activePreset: XSignPreset {
+		if let id = defaultPresetID, let match = allPresets.first(where: { $0.id == id }) {
+			return match
+		}
+		return builtInPresets[0]
+	}
+}
+
