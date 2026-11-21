@@ -21,7 +21,6 @@
 		33CF13392DB5ACFB0021D4C5 /* SWCompression in Frameworks */ = {isa = PBXBuildFile; productRef = 33CF13382DB5ACFB0021D4C5 /* SWCompression */; };
 		570920BE2F98A4F0008C4A83 /* Feather.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 570920BD2F98A4F0008C4A83 /* Feather.xcconfig */; };
 		A1B2C3D4E5F6000000000011 /* XSignActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F600000000000F /* XSignActivityAttributes.swift */; };
-		A1B2C3D4E5F6000000000012 /* XSignWidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000000000010 /* XSignWidgetSnapshot.swift */; };
 		A1B2C3D4E5F600000000000C /* XSignWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6000000000002 /* XSignWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -54,7 +53,6 @@
 		570920BD2F98A4F0008C4A83 /* Feather.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Feather.xcconfig; sourceTree = "<group>"; };
 		A1B2C3D4E5F6000000000002 /* XSignWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = XSignWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1B2C3D4E5F600000000000F /* XSignActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = XSignActivityAttributes.swift; path = Feather/Shared/XSignActivityAttributes.swift; sourceTree = "<group>"; };
-		A1B2C3D4E5F6000000000010 /* XSignWidgetSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = XSignWidgetSnapshot.swift; path = Feather/Shared/XSignWidgetSnapshot.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -148,7 +146,6 @@
 				3379C1BB2DA869A1004372DA /* Feather */,
 				A1B2C3D4E5F6000000000003 /* XSignWidget */,
 				A1B2C3D4E5F600000000000F /* XSignActivityAttributes.swift */,
-				A1B2C3D4E5F6000000000010 /* XSignWidgetSnapshot.swift */,
 				3371F7302DA9ECDD00281AC6 /* Frameworks */,
 				3379C1BA2DA869A1004372DA /* Products */,
 				570920BD2F98A4F0008C4A83 /* Feather.xcconfig */,
@@ -316,7 +313,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				A1B2C3D4E5F6000000000011 /* XSignActivityAttributes.swift in Sources */,
-				A1B2C3D4E5F6000000000012 /* XSignWidgetSnapshot.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -783,8 +779,8 @@
 		};
 		33CF13382DB5ACFB0021D4C5 /* SWCompression */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 33CF13372DB5ACFB0021D4C5 /* XCRemoteSwiftPackageReference "SWCompression" */;
 			productName = SWCompression;
+			package = 33CF13372DB5ACFB0021D4C5 /* XCRemoteSwiftPackageReference "SWCompression" */;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
