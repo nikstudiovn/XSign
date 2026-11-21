@@ -31,6 +31,12 @@ struct ExtendedTabbarView: View {
 				}
 			}
 			
+			Tab("Tìm kiếm", systemImage: "magnifyingglass", role: .search) {
+				NavigationStack {
+					GlobalSearchView()
+				}
+			}
+			
 			ForEach(TabEnum.customizableTabs, id: \.hashValue) { tab in
 				Tab(tab.title, systemImage: tab.icon) {
 					TabEnum.view(for: tab)
