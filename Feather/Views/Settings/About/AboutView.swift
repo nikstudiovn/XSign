@@ -35,7 +35,7 @@ struct AboutView: View {
 				VStack {
 					FRAppIconView(size: 72)
 					
-					Text(Bundle.main.exec)
+					Text(Bundle.main.name)
 						.font(.largeTitle)
 						.bold()
 						.foregroundStyle(Color.accentColor)
