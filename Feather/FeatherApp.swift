@@ -50,7 +50,7 @@ struct FeatherApp: App {
 	}
 	
 	private func _handleURL(_ url: URL) {
-		if url.scheme == "feather" {
+		if url.scheme == "feather"  || url.scheme == "xsign" {
 			/// feather://import-certificate?p12=<base64>&mobileprovision=<base64>&password=<base64>
 			if url.host == "import-certificate" {
 				guard
@@ -140,9 +140,21 @@ struct FeatherApp: App {
 			if url.pathExtension == "ipa" || url.pathExtension == "tipa" {
 				if FileManager.default.isFileFromFileProvider(at: url) {
 					guard url.startAccessingSecurityScopedResource() else { return }
-					FR.handlePackageFile(url) { _ in }
+					FR.handlePackageFile(url) { error in
+if error == nil {
+DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+NotificationCenter.default.post(name: Notification.Name("XSign.importedIPA"), object: nil)
+}
+}
+											  }
 				} else {
-					FR.handlePackageFile(url) { _ in }
+					FR.handlePackageFile(url) { error in
+if error == nil {
+DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+NotificationCenter.default.post(name: Notification.Name("XSign.importedIPA"), object: nil)
+}
+}
+											  }
 				}
 				
 				return
