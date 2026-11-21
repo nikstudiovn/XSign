@@ -50,8 +50,8 @@ struct FeatherApp: App {
 	}
 	
 	private func _handleURL(_ url: URL) {
-		if url.scheme == "feather" {
-			/// feather://import-certificate?p12=<base64>&mobileprovision=<base64>&password=<base64>
+		if url.scheme == "xsign" {
+			/// xsign://import-certificate?p12=<base64>&mobileprovision=<base64>&password=<base64>
 			if url.host == "import-certificate" {
 				guard
 					let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
@@ -100,7 +100,7 @@ struct FeatherApp: App {
 				
 				return
 			}
-			/// feather://export-certificate?callback_template=<template>
+			/// xsign://export-certificate?callback_template=<template>
 			/// ?callback_template=: This is how we callback to the application requesting the certificate, this will be a url scheme
 			/// 	example: livecontainer%3A%2F%2Fcertificate%3Fcert%3D%24%28BASE64_CERT%29%26password%3D%24%28PASSWORD%29
 			/// 	decoded: livecontainer://certificate?cert=$(BASE64_CERT)&password=$(PASSWORD)
@@ -117,11 +117,11 @@ struct FeatherApp: App {
 				
 				FR.exportCertificateAndOpenUrl(using: callbackTemplate)
 			}
-			/// feather://source/<url>
+			/// xsign://source/<url>
 			if let fullPath = url.validatedScheme(after: "/source/") {
 				FR.handleSource(fullPath) { }
 			}
-			/// feather://install/<url.ipa>
+			/// xsign://install/<url.ipa>
 			if
 				let fullPath = url.validatedScheme(after: "/install/"),
 				let downloadURL = URL(string: fullPath)
