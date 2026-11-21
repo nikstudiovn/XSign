@@ -168,7 +168,7 @@ struct LibraryView: View {
 						}
 					}
 								}
-				if _selectedLibrarySegment == 0 { Section { Button { _isBatchQueuePresenting = true } label: { Label("Chọn để ký hàng loạt", systemImage: "square.stack.3d.up") } } }
+				if _selectedLibrarySegment == 0 { if !_filteredImportedApps.isEmpty { Section { Button { _isBatchQueuePresenting = true } label: { Label("Chọn để ký hàng loạt", systemImage: "square.stack.3d.up") } } } }
 				if
 					!_filteredSignedApps.isEmpty,
 					_selectedLibrarySegment == 1
@@ -210,6 +210,7 @@ struct LibraryView: View {
 						}
 					}
 				}
+				if _filteredSignedApps.isEmpty, _filteredImportedApps.isEmpty { if #available(iOS 17, *) { Section { ContentUnavailableView { Label(.localized("No Apps"), systemImage: "questionmark.app.fill") } description: { Text(.localized("Get started by importing your first IPA file.")) } actions: { Menu { _importActions() } label: { NBButton(.localized("Import"), style: .text) } } .frame(maxWidth: .infinity) .padding(.vertical, 24) .listRowBackground(Color.clear) .listRowSeparator(.hidden) } } }
 			}
 			.searchable(text: $_searchText, placement: .platform())
 			.compatSearchScopes($_selectedScope) {
@@ -229,26 +230,6 @@ struct LibraryView: View {
 				Button("Hủy", role: .cancel) {}
 			} message: {
 				Text("Lưu cấu hình tùy chọn ký hiện tại thành một preset mới.")
-			}
-			.overlay {
-				if
-					_filteredSignedApps.isEmpty,
-					_filteredImportedApps.isEmpty
-				{
-					if #available(iOS 17, *) {
-						ContentUnavailableView {
-							Label(.localized("No Apps"), systemImage: "questionmark.app.fill")
-						} description: {
-							Text(.localized("Get started by importing your first IPA file."))
-						} actions: {
-							Menu {
-								_importActions()
-							} label: {
-								NBButton(.localized("Import"), style: .text)
-							}
-						}
-					}
-				}
 			}
 			.toolbar {
 				ToolbarItem(placement: .topBarLeading) {
