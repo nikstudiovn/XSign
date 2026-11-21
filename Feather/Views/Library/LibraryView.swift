@@ -24,7 +24,7 @@ struct LibraryView: View {
 	@State private var _updateCheckRotation = 0.0
 	@State private var _isUpdateCheckCompleteVisible = false
 @FetchRequest(entity: CertificatePair.entity(), sortDescriptors: [NSSortDescriptor(keyPath: \CertificatePair.date, ascending: false)]) private var _quickCertificates: FetchedResults<CertificatePair>
-@AppStorage("feather.selectedCert") private var _quickSelectedCertIndex: Int = 0
+@AppStorage("XSign.selectedCert") private var _quickSelectedCertIndex: Int = 0
 @State private var _showQuickSignPrompt = false
 @State private var _promptApp: Imported? = nil
 	
