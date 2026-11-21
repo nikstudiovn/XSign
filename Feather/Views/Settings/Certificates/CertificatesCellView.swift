@@ -260,12 +260,12 @@ extension CertificatesCellView {
 	private func _certInfoPill(data: CertificatePair) -> some View {
 		let pills = _buildPills(from: data)
 		HStack(spacing: 6) {
-			ForEach(pills, id: \.self) { pill in
+			ForEach(Array(pills.enumerated()), id: \.offset) { index, pill in
 				NBPillView(
 					title: pill.title,
 					icon: pill.icon,
 					color: pill.color,
-					index: 0,
+					index: index,
 					count: pills.count
 				)
 			}
@@ -275,7 +275,7 @@ extension CertificatesCellView {
 	private func _buildPills(from cert: CertificatePair) -> [NBPillItem] {
 		var pills: [NBPillItem] = []
 
-		if cert.ppqCheck == true {
+		if cert.ppQCheck == true {
 			pills.append(NBPillItem(title: "PPQCheck", icon: "checkmark.shield", color: .red))
 		}
 
