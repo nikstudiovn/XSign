@@ -16,7 +16,7 @@ struct LibraryView: View {
 		@ObservedObject private var _presetManager = XSignPresetManager.shared
 	@ObservedObject private var _ocspCache = XSignOCSPCache.shared
 @FetchRequest(entity: CertificatePair.entity(), sortDescriptors: [NSSortDescriptor(keyPath: \CertificatePair.date, ascending: false)]) private var _libraryCertificates: FetchedResults<CertificatePair>
-@AppStorage("feather.selectedCert") private var _librarySelectedCertIndex: Int = 0
+@AppStorage("XSign.selectedCert") private var _librarySelectedCertIndex: Int = 0
 @State private var _isSavingPresetAlertPresented = false
 @State private var _newPresetName = ""
 	
