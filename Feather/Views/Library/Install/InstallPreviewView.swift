@@ -14,9 +14,9 @@ import OSLog
 struct InstallPreviewView: View {
 	@Environment(\.dismiss) var dismiss
 
-	@AppStorage("Feather.useShareSheetForArchiving") private var _useShareSheet: Bool = false
-	@AppStorage("Feather.installationMethod") private var _installationMethod: Int = 0
-	@AppStorage("Feather.serverMethod") private var _serverMethod: Int = 1
+	@AppStorage("XSign.useShareSheetForArchiving") private var _useShareSheet: Bool = false
+	@AppStorage("XSign.installationMethod") private var _installationMethod: Int = 0
+	@AppStorage("XSign.serverMethod") private var _serverMethod: Int = 1
 	@State private var _isWebviewPresenting = false
 	@State private var progressTask: Task<Void, Never>?
 	/// XSign: guards against onAppear firing twice (archive + .ready twice).
@@ -34,7 +34,7 @@ struct InstallPreviewView: View {
 	init(app: AppInfoPresentable, isSharing: Bool = false) {
 		self.app = app
 		self.isSharing = isSharing
-		let viewModel = InstallerStatusViewModel(isIdevice: UserDefaults.standard.integer(forKey: "Feather.installationMethod") == 1)
+		let viewModel = InstallerStatusViewModel(isIdevice: UserDefaults.standard.integer(forKey: "XSign.installationMethod") == 1)
 		self._viewModel = StateObject(wrappedValue: viewModel)
 		self._installer = StateObject(wrappedValue: try! ServerInstaller(app: app, viewModel: viewModel))
 	}

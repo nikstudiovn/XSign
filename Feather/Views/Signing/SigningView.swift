@@ -44,7 +44,7 @@ struct SigningView: View {
 	
 	init(app: AppInfoPresentable) {
 		self.app = app
-		let storedCert = UserDefaults.standard.integer(forKey: "feather.selectedCert")
+		let storedCert = UserDefaults.standard.integer(forKey: "XSign.selectedCert")
 		__temporaryCertificate = State(initialValue: storedCert)
 	}
 		
@@ -115,7 +115,7 @@ struct SigningView: View {
 			_showProgressSheet = false
 			dismiss()
 			DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-				NotificationCenter.default.post(name: Notification.Name("Feather.installApp"), object: nil)
+				NotificationCenter.default.post(name: Notification.Name("XSign.installApp"), object: nil)
 			}
 		},
 		onClose: {
@@ -354,7 +354,7 @@ extension SigningView {
 					DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
 						_showProgressSheet = false
 						dismiss()
-						NotificationCenter.default.post(name: Notification.Name("Feather.installApp"), object: nil)
+						NotificationCenter.default.post(name: Notification.Name("XSign.installApp"), object: nil)
 					}
 				}
 			}

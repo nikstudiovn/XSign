@@ -48,7 +48,7 @@ extension ServerView {
 
 // MARK: - View
 struct ServerView: View {
-	@AppStorage("Feather.serverMethod") private var _serverMethod: Int = 1
+	@AppStorage("XSign.serverMethod") private var _serverMethod: Int = 1
 	@AppStorage(ServerInstaller.manifestServerKey) private var _manifestServer: String = ""
 	@State private var _isChecking = false
 	@State private var _checkResult: String?

@@ -109,6 +109,6 @@ class ServerInstaller: Identifiable, ObservableObject {
 	}
 	
 	func getIPFix() -> Bool {
-		UserDefaults.standard.bool(forKey: "Feather.ipFix")
+		UserDefaults.standard.bool(forKey: "XSign.ipFix")
 	}
 }

@@ -118,6 +118,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>xsign</string>
+				<string>feather</string>
 			</array>
 		</dict>
 	</array>

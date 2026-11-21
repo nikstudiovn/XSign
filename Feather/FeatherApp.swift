@@ -40,17 +40,17 @@ struct FeatherApp: App {
 			}
 			// dear god help me
 			.onAppear {
-				if let style = UIUserInterfaceStyle(rawValue: UserDefaults.standard.integer(forKey: "Feather.userInterfaceStyle")) {
+				if let style = UIUserInterfaceStyle(rawValue: UserDefaults.standard.integer(forKey: "XSign.userInterfaceStyle")) {
 					UIApplication.topViewController()?.view.window?.overrideUserInterfaceStyle = style
 				}
 				
-				UIApplication.topViewController()?.view.window?.tintColor = UIColor(Color(hex: UserDefaults.standard.string(forKey: "Feather.userTintColor") ?? "#848ef9"))
+				UIApplication.topViewController()?.view.window?.tintColor = UIColor(Color(hex: UserDefaults.standard.string(forKey: "XSign.userTintColor") ?? "#848ef9"))
 			}
 		}
 	}
 	
 	private func _handleURL(_ url: URL) {
-		if url.scheme == "xsign" {
+		if let scheme = url.scheme?.lowercased(), ["xsign", "feather"].contains(scheme) {
 			/// xsign://import-certificate?p12=<base64>&mobileprovision=<base64>&password=<base64>
 			if url.host == "import-certificate" {
 				guard
@@ -172,7 +172,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 				config.urlCache = nil
 				return DataLoader(configuration: config)
 			}()
-			let dataCache = try? DataCache(name: "thewonderofyou.Feather.datacache") // disk cache
+			let dataCache = try? DataCache(name: "XSign.datacache") // disk cache
 			let imageCache = Nuke.ImageCache() // memory cache
 			dataCache?.sizeLimit = 500 * 1024 * 1024
 			imageCache.costLimit = 100 * 1024 * 1024
@@ -203,7 +203,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 	
 	private func _addDefaultCertificates() {
 		guard
-			UserDefaults.standard.bool(forKey: "feather.didImportDefaultCertificates") == false,
+			UserDefaults.standard.bool(forKey: "XSign.didImportDefaultCertificates") == false,
 			let signingAssetsURL = Bundle.main.url(forResource: "signing-assets", withExtension: nil)
 		else {
 			return
@@ -246,7 +246,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 					
 				}
 			}
-			UserDefaults.standard.set(true, forKey: "feather.didImportDefaultCertificates")
+			UserDefaults.standard.set(true, forKey: "XSign.didImportDefaultCertificates")
 		} catch {
 			Logger.misc.error("Failed to list signing-assets: \(error)")
 		}
