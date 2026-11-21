@@ -48,7 +48,6 @@ extension ServerView {
 
 // MARK: - View
 struct ServerView: View {
-	@AppStorage("Feather.ipFix") private var _ipFix: Bool = false
 	@AppStorage("Feather.serverMethod") private var _serverMethod: Int = 1
 	@AppStorage(ServerInstaller.manifestServerKey) private var _manifestServer: String = ""
 	@State private var _isChecking = false
@@ -58,6 +57,7 @@ struct ServerView: View {
 	// MARK: Body
 	// XSign: "Fully Local" and "Update SSL Certificates" are hidden because the
 	// backloop.dev SSL pack they depend on was discontinued.
+	// "Only use localhost address" is removed: Semi Local always uses 127.0.0.1 now.
 	var body: some View {
 		Group {
 			Section {
@@ -65,7 +65,6 @@ struct ServerView: View {
 					Text(_serverMethods[1]).tag(1)
 				}
 				.onAppear { if _serverMethod != 1 { _serverMethod = 1 } }
-				Toggle(.localized("Only use localhost address"), systemImage: "lifepreserver", isOn: $_ipFix)
 			}
 			
 			Section {
