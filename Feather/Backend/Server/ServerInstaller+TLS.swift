@@ -43,13 +43,14 @@ extension ServerInstaller {
 	}
 	
 	// MARK: Files/IP
+	/// XSign: Semi Local always uses localhost. The IPA is downloaded by this same device,
+	/// so a network address is never needed. Using the Wi-Fi/cellular address broke installs
+	/// on 4G/5G, where the carrier address (e.g. 100.64.0.0/10) is rejected by the manifest server.
 	func sni() -> String {
 		let localhost = "127.0.0.1"
 		
 		if getServerMethod() == 1 {
-			return !self.getIPFix()
-				? (Self.getLocalAddress() ?? localhost)
-				: localhost
+			return localhost
 		} else {
 			return readCommonName() ?? localhost
 		}
