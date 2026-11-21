@@ -19,6 +19,11 @@ struct InstallPreviewView: View {
 	@AppStorage("Feather.serverMethod") private var _serverMethod: Int = 1
 	@State private var _isWebviewPresenting = false
 	@State private var progressTask: Task<Void, Never>?
+	/// XSign: guards against onAppear firing twice (archive + .ready twice).
+	@State private var _didStartInstall = false
+	/// XSign: guards against opening the itms-services link more than once,
+	/// which showed the iOS install prompt twice.
+	@State private var _didOpenInstallLink = false
 	
 	var app: AppInfoPresentable
 	@StateObject var viewModel: InstallerStatusViewModel
@@ -58,12 +63,15 @@ struct InstallPreviewView: View {
 		}
 		.onReceive(viewModel.$status) { newStatus in
 			if _installationMethod == 0 {
-				if case .ready = newStatus {
+				if case .ready = newStatus, !_didOpenInstallLink {
 					// XSign: open the itms-services link directly with an HTTPS manifest.
 					// The manifest server is the custom URL from Server settings, then the
 					// XSign Cloudflare Worker (both health-checked), then api.palera.in.
 					// No in-app Safari page: no "connection not secure" warning and no
 					// "Open in iTunes?" prompt.
+					// The flag is set before the async health check so a repeated
+					// .ready cannot open the link a second time.
+					_didOpenInstallLink = true
 					let installer = installer
 					Task {
 						let link = await installer.resolveITunesLinkExternal()
@@ -145,6 +153,10 @@ struct InstallPreviewView: View {
 	}
 	
 	private func _install() {
+		// XSign: onAppear can fire more than once for a sheet; only install once.
+		guard !_didStartInstall else { return }
+		_didStartInstall = true
+		
 		guard isSharing || app.identifier != Bundle.main.bundleIdentifier! || _installationMethod == 1 else {
 			UIAlertController.showAlertWithOk(
 				title: .localized("Install"),
