@@ -58,6 +58,13 @@ struct InstallPreviewView: View {
 		.background(Color(UIColor.secondarySystemBackground))
 		.cornerRadius(cornerRadius)
 		.padding()
+		.onReceive(viewModel.$status) { status in
+			_updateLiveActivity(for: status)
+		}
+		.onDisappear {
+			// Đóng sheet khi chưa xong thì kết thúc activity để không bị treo.
+			XSignLiveActivityManager.shared.end(stage: .failed)
+		}
 		.sheet(isPresented: $_isWebviewPresenting) {
 			SafariRepresentableView(url: installer.pageEndpoint).ignoresSafeArea()
 		}
@@ -266,5 +273,27 @@ struct InstallPreviewView: View {
 
 	private func _normalizeInstallProgress(_ rawProgress: Double) -> Double {
 		min(1.0, max(0.0, (rawProgress - 0.6) / 0.3))
+	}
+}
+
+
+// MARK: - Live Activity
+extension InstallPreviewView {
+	fileprivate func _updateLiveActivity(for status: InstallerStatusViewModel.InstallerStatus) {
+		let manager = XSignLiveActivityManager.shared
+		switch status {
+		case .none, .ready:
+			manager.start(appName: app.name ?? "XSign", stage: .sending, progress: 0.1)
+		case .sendingManifest:
+			manager.update(stage: .sending, progress: 0.35)
+		case .sendingPayload:
+			manager.update(stage: .sending, progress: 0.6)
+		case .installing:
+			manager.update(stage: .installing, progress: 0.85)
+		case .completed:
+			manager.end(stage: .completed)
+		case .broken:
+			manager.end(stage: .failed)
+		}
 	}
 }

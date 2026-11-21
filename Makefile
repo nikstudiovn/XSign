@@ -54,7 +54,7 @@ $(PLATFORMS): deps
 	mkdir -p _build/Payload
 	cp -R _build/Applications/*.app _build/Payload/XSign.app
 	chmod -R 0755 _build/Payload/XSign.app
-	codesign --force --sign - --timestamp=none _build/Payload/XSign.app
+	codesign --force --deep --sign - --timestamp=none _build/Payload/XSign.app
 	cp deps/* _build/Payload/XSign.app/ 2>/dev/null || true
 
 	mkdir -p packages

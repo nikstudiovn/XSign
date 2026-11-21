@@ -313,6 +313,7 @@ extension SigningView {
 		_signingStepIndex = 1
 		_signingDone = false
 		_signingError = nil
+		XSignLiveActivityManager.shared.start(appName: app.name ?? "XSign", stage: .signing, progress: _signingProgress)
 		_progressTimer?.invalidate()
 		_progressTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
 			DispatchQueue.main.async {
@@ -322,6 +323,7 @@ extension SigningView {
 				} else {
 					_signingProgress = min(0.88, _signingProgress + 0.02)
 				}
+				XSignLiveActivityManager.shared.update(stage: .signing, progress: _signingProgress)
 			}
 		}
 
@@ -338,6 +340,7 @@ extension SigningView {
 				if let error {
 					_signingError = error.localizedDescription
 					_isSigning = false
+					XSignLiveActivityManager.shared.end(stage: .failed)
 					return
 				}
 
@@ -345,6 +348,13 @@ extension SigningView {
 				_signingProgress = 1.0
 				_signingDone = true
 				_isSigning = false
+				XSignLiveActivityManager.shared.refreshWidgetSnapshot()
+				// Nếu tự động cài sau khi ký thì activity tiếp tục ở bước cài đặt, ngược lại kết thúc tại đây.
+				if _temporaryOptions.post_installAppAfterSigned {
+					XSignLiveActivityManager.shared.update(stage: .sending, progress: 0.0)
+				} else {
+					XSignLiveActivityManager.shared.end(stage: .completed)
+				}
 
 				if _temporaryOptions.post_deleteAppAfterSigned, !app.isSigned {
 					Storage.shared.deleteApp(for: app)

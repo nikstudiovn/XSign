@@ -38,6 +38,9 @@ struct FeatherApp: App {
 					)
 				}
 			}
+			.onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+				XSignLiveActivityManager.shared.refreshWidgetSnapshot()
+			}
 			// dear god help me
 			.onAppear {
 				if let style = UIUserInterfaceStyle(rawValue: UserDefaults.standard.integer(forKey: "XSign.userInterfaceStyle")) {
