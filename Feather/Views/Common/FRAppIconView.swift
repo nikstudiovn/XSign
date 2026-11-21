@@ -73,9 +73,9 @@ struct FRAppIconView: View {
 	@Environment(\.colorScheme) private var colorScheme
 	@StateObject private var loader = FRAppIconLoader()
 	
-	@AppStorage("Feather.userTintColor") private var selectedColorHex: String = "#848ef9"
-	@AppStorage("Feather.shouldTintIcons") private var shouldTintIcons: Bool = false
-	@AppStorage("Feather.shouldChangeIconsBasedOffStyle") private var shouldChangeIconsBasedOffStyle: Bool = false
+	@AppStorage("XSign.userTintColor") private var selectedColorHex: String = "#848ef9"
+	@AppStorage("XSign.shouldTintIcons") private var shouldTintIcons: Bool = false
+	@AppStorage("XSign.shouldChangeIconsBasedOffStyle") private var shouldChangeIconsBasedOffStyle: Bool = false
 	
 	init(app: AppInfoPresentable? = nil, size: CGFloat = 87) {
 		self.app = app

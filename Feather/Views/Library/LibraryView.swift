@@ -238,7 +238,7 @@ NotificationCenter.default.post(name: Notification.Name("XSign.importedIPA"), ob
 					}
 				}
 			}
-			.onReceive(NotificationCenter.default.publisher(for: Notification.Name("Feather.installApp"))) { _ in
+			.onReceive(NotificationCenter.default.publisher(for: Notification.Name("XSign.installApp"))) { _ in
 				if let latest = _signedApps.first {
 					_selectedInstallAppPresenting = AnyApp(base: latest)
 				}
