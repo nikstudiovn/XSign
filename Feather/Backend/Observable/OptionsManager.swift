@@ -257,3 +257,124 @@ extension LocalizedDescribable where Self: RawRepresentable, RawValue == String 
 		return localized == self.rawValue ? self.rawValue : localized
 	}
 }
+
+// MARK: - XSign Presets
+struct XSignPreset: Codable, Identifiable, Equatable {
+	let id: UUID
+	var name: String
+	var isBuiltIn: Bool
+	var options: Options
+
+	init(id: UUID = UUID(), name: String, isBuiltIn: Bool = false, options: Options) {
+		self.id = id
+		self.name = name
+		self.isBuiltIn = isBuiltIn
+		self.options = options
+	}
+}
+
+@MainActor
+final class XSignPresetManager: ObservableObject {
+	static let shared = XSignPresetManager()
+
+	private let customPresetsKey = "xsign.customPresets"
+	private let defaultPresetIDKey = "xsign.defaultPresetID"
+
+	@Published private(set) var customPresets: [XSignPreset] = []
+	@Published var defaultPresetID: UUID?
+
+	let builtInPresets: [XSignPreset] = {
+		var cloneOptions = Options.defaultOptions
+		cloneOptions.ppqProtection = true
+		cloneOptions.dynamicProtection = true
+		cloneOptions.removeURLScheme = true
+		cloneOptions.fileSharing = true
+
+		var noTweakOptions = Options.defaultOptions
+		noTweakOptions.injectionFiles = []
+		noTweakOptions.injectIntoExtensions = false
+		noTweakOptions.experiment_replaceSubstrateWithEllekit = false
+
+		return [
+			XSignPreset(
+				id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+				name: "Mặc định",
+				isBuiltIn: true,
+				options: Options.defaultOptions
+			),
+			XSignPreset(
+				id: UUID(uuidString: "00000000-0000-0000-0000-000000000002")!,
+				name: "Clone app",
+				isBuiltIn: true,
+				options: cloneOptions
+			),
+			XSignPreset(
+				id: UUID(uuidString: "00000000-0000-0000-0000-000000000003")!,
+				name: "Không tweak",
+				isBuiltIn: true,
+				options: noTweakOptions
+			)
+		]
+	}()
+
+	var allPresets: [XSignPreset] {
+		builtInPresets + customPresets
+	}
+
+	var effectiveOptions: Options {
+		if let defaultID = defaultPresetID,
+		   let preset = allPresets.first(where: { $0.id == defaultID }) {
+			return preset.options
+		}
+		return Options.defaultOptions
+	}
+
+	private init() {
+		load()
+	}
+
+	private func load() {
+		if let data = UserDefaults.standard.data(forKey: customPresetsKey),
+		   let decoded = try? JSONDecoder().decode([XSignPreset].self, from: data) {
+			customPresets = decoded
+		}
+		if let idString = UserDefaults.standard.string(forKey: defaultPresetIDKey),
+		   let uuid = UUID(uuidString: idString) {
+			defaultPresetID = uuid
+		} else {
+			defaultPresetID = builtInPresets.first?.id
+		}
+	}
+
+	private func saveCustomPresets() {
+		if let data = try? JSONEncoder().encode(customPresets) {
+			UserDefaults.standard.set(data, forKey: customPresetsKey)
+		}
+	}
+
+	func saveCustomPreset(name: String, options: Options) {
+		let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+		guard !trimmed.isEmpty else { return }
+		let preset = XSignPreset(name: trimmed, isBuiltIn: false, options: options)
+		customPresets.append(preset)
+		saveCustomPresets()
+	}
+
+	func deleteCustomPreset(id: UUID) {
+		customPresets.removeAll { $0.id == id }
+		saveCustomPresets()
+		if defaultPresetID == id {
+			selectDefault(builtInPresets.first?.id)
+		}
+	}
+
+	func selectDefault(_ id: UUID?) {
+		defaultPresetID = id
+		if let id {
+			UserDefaults.standard.set(id.uuidString, forKey: defaultPresetIDKey)
+		} else {
+			UserDefaults.standard.removeObject(forKey: defaultPresetIDKey)
+		}
+	}
+}
+
