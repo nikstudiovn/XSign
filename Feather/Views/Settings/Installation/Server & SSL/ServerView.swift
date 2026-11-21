@@ -50,6 +50,9 @@ extension ServerView {
 struct ServerView: View {
 	@AppStorage("Feather.ipFix") private var _ipFix: Bool = false
 	@AppStorage("Feather.serverMethod") private var _serverMethod: Int = 1
+	@AppStorage(ServerInstaller.manifestServerKey) private var _manifestServer: String = ""
+	@State private var _isChecking = false
+	@State private var _checkResult: String?
 	private let _serverMethods: [String] = [.localized("Fully Local"), .localized("Semi Local")]
 	
 	// MARK: Body
@@ -63,6 +66,53 @@ struct ServerView: View {
 				}
 				.onAppear { if _serverMethod != 1 { _serverMethod = 1 } }
 				Toggle(.localized("Only use localhost address"), systemImage: "lifepreserver", isOn: $_ipFix)
+			}
+			
+			Section {
+				TextField(ServerInstaller.defaultManifestServer, text: $_manifestServer)
+					.keyboardType(.URL)
+					.textInputAutocapitalization(.never)
+					.autocorrectionDisabled()
+					.onChange(of: _manifestServer) { _ in _checkResult = nil }
+				
+				Button {
+					_checkManifestServer()
+				} label: {
+					HStack {
+						Label(String.localized("Check Manifest Server"), systemImage: "checkmark.shield")
+						Spacer()
+						if _isChecking {
+							ProgressView()
+						} else if let _checkResult {
+							Text(_checkResult)
+								.foregroundStyle(.secondary)
+						}
+					}
+				}
+				.disabled(_isChecking)
+			} header: {
+				Text(String.localized("Manifest Server"))
+			} footer: {
+				Text(String.localized("HTTPS server that generates the install manifest. Leave empty to use the default XSign server. If it is unreachable, XSign falls back to the default server, then api.palera.in."))
+			}
+		}
+	}
+	
+	private func _checkManifestServer() {
+		let raw = _manifestServer.trimmingCharacters(in: .whitespacesAndNewlines)
+		guard let base = ServerInstaller.normalizedManifestServer(raw.isEmpty ? ServerInstaller.defaultManifestServer : raw) else {
+			_checkResult = String.localized("Invalid HTTPS URL")
+			return
+		}
+		
+		_isChecking = true
+		_checkResult = nil
+		
+		Task {
+			let ok = await ServerInstaller.isManifestServerHealthy(base, timeout: 5)
+			await MainActor.run {
+				_isChecking = false
+				_checkResult = ok ? String.localized("Working") : String.localized("Unreachable")
 			}
 		}
 	}

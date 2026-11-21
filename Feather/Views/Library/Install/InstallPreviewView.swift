@@ -59,12 +59,19 @@ struct InstallPreviewView: View {
 		.onReceive(viewModel.$status) { newStatus in
 			if _installationMethod == 0 {
 				if case .ready = newStatus {
-					// XSign: open the itms-services link directly with the HTTPS manifest
-					// (api.palera.in). This skips the in-app Safari page, so there is no
-					// "connection not secure" warning and no "Open in iTunes?" prompt.
-					// The plain-HTTP local manifest (iTunesLink) is rejected by iOS.
-					if let url = URL(string: installer.iTunesLinkExternal) {
-						UIApplication.shared.open(url)
+					// XSign: open the itms-services link directly with an HTTPS manifest.
+					// The manifest server is the custom URL from Server settings, then the
+					// XSign Cloudflare Worker (both health-checked), then api.palera.in.
+					// No in-app Safari page: no "connection not secure" warning and no
+					// "Open in iTunes?" prompt.
+					let installer = installer
+					Task {
+						let link = await installer.resolveITunesLinkExternal()
+						if let url = URL(string: link) {
+							await MainActor.run {
+								UIApplication.shared.open(url)
+							}
+						}
 					}
 				}
 				
