@@ -167,7 +167,7 @@ struct XSignFolderBrowserView: View {
 				}
 			}
 		}
-		.searchable(text: $searchText, prompt: "Tìm kiếm tệp hoặc thư mục")
+		.searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Tìm kiếm tệp hoặc thư mục")
 		.navigationTitle(title)
 		.toolbar {
 			ToolbarItem(placement: .topBarTrailing) {
@@ -295,6 +295,9 @@ struct XSignFolderBrowserView: View {
 	}
 	
 	private func _loadItems() {
+		if isRootTab {
+					     try? FileManager.default.createDirectory(at: directory.appendingPathComponent("InputFile", isDirectory: true), withIntermediateDirectories: true)
+		}
 		do {
 			let contents = try FileManager.default.contentsOfDirectory(
 				at: directory,
