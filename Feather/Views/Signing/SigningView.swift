@@ -114,9 +114,8 @@ struct SigningView: View {
 		onInstallNow: {
 			_showProgressSheet = false
 			dismiss()
-			DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-				NotificationCenter.default.post(name: Notification.Name("XSign.installApp"), object: nil)
-			}
+			// Đợi fullScreenCover đóng xong rồi mới mở InstallPreviewView.
+			XSignQuickSigner.requestInstall(after: 0.6)
 		},
 		onClose: {
 			_showProgressSheet = false
@@ -313,6 +312,7 @@ extension SigningView {
 		_signingStepIndex = 1
 		_signingDone = false
 		_signingError = nil
+		XSignLiveActivityManager.shared.start(appName: app.name ?? "XSign", stage: .signing, progress: _signingProgress)
 		_progressTimer?.invalidate()
 		_progressTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
 			DispatchQueue.main.async {
@@ -322,6 +322,7 @@ extension SigningView {
 				} else {
 					_signingProgress = min(0.88, _signingProgress + 0.02)
 				}
+				XSignLiveActivityManager.shared.update(stage: .signing, progress: _signingProgress)
 			}
 		}
 
@@ -338,6 +339,7 @@ extension SigningView {
 				if let error {
 					_signingError = error.localizedDescription
 					_isSigning = false
+					XSignLiveActivityManager.shared.end(stage: .failed)
 					return
 				}
 
@@ -345,16 +347,23 @@ extension SigningView {
 				_signingProgress = 1.0
 				_signingDone = true
 				_isSigning = false
+				XSignLiveActivityManager.shared.update(stage: .signing, progress: 1.0, force: true)
+				// Nếu tự động cài sau khi ký thì activity tiếp tục ở bước cài đặt (InstallPreviewView),
+				// ngược lại kết thúc tại đây.
+				if !_temporaryOptions.post_installAppAfterSigned {
+					XSignLiveActivityManager.shared.end(stage: .completed)
+				}
 
 				if _temporaryOptions.post_deleteAppAfterSigned, !app.isSigned {
 					Storage.shared.deleteApp(for: app)
 				}
 
 				if _temporaryOptions.post_installAppAfterSigned {
+					// Ký & đóng gói IPA xong 100% → tự mở luồng cài Semi Local OTA.
 					DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
 						_showProgressSheet = false
 						dismiss()
-						NotificationCenter.default.post(name: Notification.Name("XSign.installApp"), object: nil)
+						XSignQuickSigner.requestInstall(after: 0.6)
 					}
 				}
 			}

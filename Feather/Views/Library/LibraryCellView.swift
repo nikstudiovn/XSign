@@ -51,57 +51,29 @@ struct LibraryCellView: View {
 	
 	// MARK: Body
 	var body: some View {
-		let isRegular = horizontalSizeClass != .compact
 		let isEditing = editMode?.wrappedValue == .active
 		
-		HStack(spacing: 18) {
+		Group {
 			if isEditing {
-				Button {
-					_toggleSelection()
+				_rowContent(isEditing: true)
+					.contentShape(Rectangle())
+					.onTapGesture { _toggleSelection() }
+			} else {
+				// Nhấn 1 lần mở menu ngay; nhấn giữ cũng mở đúng menu này
+				// (không gắn thêm contextMenu để tránh xung đột gesture).
+				Menu {
+					_menuActions(for: app)
 				} label: {
-					Image(systemName: _isSelected ? "checkmark.circle.fill" : "circle")
-						.foregroundColor(_isSelected ? .accentColor : .secondary)
-						.font(.title2)
+					_rowContent(isEditing: false)
+						.contentShape(Rectangle())
 				}
-				.buttonStyle(.borderless)
-			}
-			
-			_appIcon(for: app)
-			
-			NBTitleWithSubtitleView(
-				title: app.name ?? .localized("Unknown"),
-				subtitle: _desc,
-				linelimit: 0
-			)
-			
-			if !isEditing {
-				_buttonActions(for: app)
-			}
-		}
-		.padding(isRegular ? 12 : 0)
-		.background(
-			isRegular
-				? RoundedRectangle(cornerRadius: 18, style: .continuous)
-				.fill(_isSelected && isEditing ? Color.accentColor.opacity(0.1) : Color(.quaternarySystemFill))
-				: nil
-		)
-		.contentShape(Rectangle())
-		.onTapGesture {
-			if isEditing {
-				_toggleSelection()
+				.buttonStyle(.plain)
+				.foregroundStyle(.primary)
+				.disabled(_isQuickSigning)
 			}
 		}
 		.swipeActions {
 			if !isEditing {
-				_actions(for: app)
-			}
-		}
-		.contextMenu {
-			if !isEditing {
-				_contextActions(for: app)
-				Divider()
-				_contextActionsExtra(for: app)
-				Divider()
 				_actions(for: app)
 			}
 		}
@@ -132,6 +104,39 @@ struct LibraryCellView: View {
 		} else {
 			return .localized("Unknown")
 		}
+	}
+	
+	@ViewBuilder
+	private func _rowContent(isEditing: Bool) -> some View {
+		let isRegular = horizontalSizeClass != .compact
+		HStack(spacing: 18) {
+			if isEditing {
+				Image(systemName: _isSelected ? "checkmark.circle.fill" : "circle")
+					.foregroundColor(_isSelected ? .accentColor : .secondary)
+					.font(.title2)
+			}
+			
+			_appIcon(for: app)
+			
+			NBTitleWithSubtitleView(
+				title: app.name ?? .localized("Unknown"),
+				subtitle: _desc,
+				linelimit: 0
+			)
+			
+			Spacer(minLength: 0)
+			
+			if !isEditing {
+				_statusAccessory(for: app)
+			}
+		}
+		.padding(isRegular ? 12 : 0)
+		.background(
+			isRegular
+				? RoundedRectangle(cornerRadius: 18, style: .continuous)
+				.fill(_isSelected && isEditing ? Color.accentColor.opacity(0.1) : Color(.quaternarySystemFill))
+				: nil
+		)
 	}
 }
 
@@ -164,15 +169,28 @@ extension LibraryCellView {
 		}
 	}
 	
+	/// Chỉ hiển thị trạng thái (không tương tác) để hàng gọn gàng.
 	@ViewBuilder
-	private func _contextActions(for app: AppInfoPresentable) -> some View {
-		Button(.localized("Get Info"), systemImage: "info.circle") {
-			selectedInfoAppPresenting = AnyApp(base: app)
+	private func _statusAccessory(for app: AppInfoPresentable) -> some View {
+		if _isQuickSigning {
+			ProgressView()
+		} else if app.isSigned {
+			FRExpirationPillView(
+				title: .localized("Install"),
+				revoked: certRevoked,
+				expiration: certInfo
+			)
+			.allowsHitTesting(false)
 		}
 	}
 	
+	/// Menu tùy chọn dùng chung cho nhấn 1 lần và nhấn giữ.
 	@ViewBuilder
-	private func _contextActionsExtra(for app: AppInfoPresentable) -> some View {
+	private func _menuActions(for app: AppInfoPresentable) -> some View {
+		Button("Xem thông tin", systemImage: "info.circle") {
+			selectedInfoAppPresenting = AnyApp(base: app)
+		}
+		
 		if let update = updateManager.update(for: app) {
 			Button(.localized("Update"), systemImage: "arrow.down.circle") {
 				if app.isSigned {
@@ -184,102 +202,51 @@ extension LibraryCellView {
 			}
 		}
 		
+		Divider()
+		
+		Button("Ký & cài", systemImage: "bolt.badge.checkmark") {
+			_quickSignAndInstall(app, certificate: _defaultCertificate())
+		}
+		if _certificates.count > 1 {
+			Menu {
+				ForEach(_certificates, id: \.objectID) { cert in
+					Button(cert.nickname ?? .localized("Certificate"), systemImage: "checkmark.seal") {
+						_quickSignAndInstall(app, certificate: cert)
+					}
+				}
+			} label: {
+				Label("Ký & cài bằng chứng chỉ…", systemImage: "checkmark.seal")
+			}
+		}
 		if app.isSigned {
+			Button("Ký lại", systemImage: "signature") {
+				selectedSigningAppPresenting = AnyApp(base: app)
+			}
+		} else {
+			Button("Ký", systemImage: "signature") {
+				selectedSigningAppPresenting = AnyApp(base: app)
+			}
+		}
+		
+		if app.isSigned {
+			Button("Cài đặt", systemImage: "square.and.arrow.down") {
+				selectedInstallAppPresenting = AnyApp(base: app)
+			}
 			if let id = app.identifier {
 				Button(.localized("Open"), systemImage: "app.badge.checkmark") {
 					UIApplication.openApp(with: id)
 				}
 			}
-			Button(.localized("Install"), systemImage: "square.and.arrow.down") {
-				selectedInstallAppPresenting = AnyApp(base: app)
-			}
-			Button(.localized("Re-sign"), systemImage: "signature") {
-				selectedSigningAppPresenting = AnyApp(base: app)
-			}
 			Button(.localized("Export"), systemImage: "square.and.arrow.up") {
 				selectedInstallAppPresenting = AnyApp(base: app, archive: true)
 			}
-		} else {
-			Button(.localized("Install"), systemImage: "square.and.arrow.down") {
-				selectedInstallAppPresenting = AnyApp(base: app)
-			}
-			Button(.localized("Sign"), systemImage: "signature") {
-				selectedSigningAppPresenting = AnyApp(base: app)
-			}
 		}
-	}
-	
-	@ViewBuilder
-	private func _buttonActions(for app: AppInfoPresentable) -> some View {
-		Group {
-			if let update = updateManager.update(for: app) {
-				if app.isSigned {
-					Button {
-						_signedUpdateConfirmation = update
-						_isSignedUpdateConfirmationPresented = true
-					} label: {
-						FRExpirationPillView(
-							title: .localized("Install"),
-							revoked: certRevoked,
-							expiration: certInfo
-						)
-					}
-				} else {
-					Button {
-						_startUpdateDownload(update)
-					} label: {
-						FRExpirationPillView(
-							title: .localized("Update"),
-							revoked: false,
-							expiration: nil
-						)
-					}
-				}
-			} else if app.isSigned {
-				Button {
-					selectedInstallAppPresenting = AnyApp(base: app)
-				} label: {
-					FRExpirationPillView(
-						title: .localized("Install"),
-						revoked: certRevoked,
-						expiration: certInfo
-					)
-				}
-			} else {
-			Button {
-_quickSignAndInstall(app, certificate: _defaultCertificate())
-} label: {
-Group {
-if _isQuickSigning {
-ProgressView()
-} else {
-Text("Ký & cài")
-.font(.subheadline.weight(.semibold))
-}
-}
-.padding(.horizontal, 12)
-.padding(.vertical, 6)
-.modifier(XSignGlassPillModifier())
-}
-.disabled(_isQuickSigning)
-.contextMenu {
-ForEach(_certificates, id: \.objectID) { cert in
-Button {
-_quickSignAndInstall(app, certificate: cert)
-} label: {
-Label(cert.nickname ?? .localized("Certificate"), systemImage: "checkmark.seal")
-}
-}
-Divider()
-Button {
-selectedSigningAppPresenting = AnyApp(base: app)
-} label: {
-Label("Tùy chỉnh trước khi ký", systemImage: "slider.horizontal.3")
-}
-}
-			}
+		
+		Divider()
+		
+		Button("Xóa", systemImage: "trash", role: .destructive) {
+			Storage.shared.deleteApp(for: app)
 		}
-		.buttonStyle(.borderless)
 	}
 	
 	private func _startUpdateDownload(_ update: AppUpdate) {
@@ -290,48 +257,30 @@ Label("Tùy chỉnh trước khi ký", systemImage: "slider.horizontal.3")
 		)
 	}
 	
-private func _defaultCertificate() -> CertificatePair? {
-if _selectedCertIndex >= 0 && _selectedCertIndex < _certificates.count {
-return _certificates[_selectedCertIndex]
-}
-return _certificates.first
-}
-
-private func _quickSignAndInstall(_ app: AppInfoPresentable, certificate: CertificatePair?) {
-guard let cert = certificate else {
-UIAlertController.showAlertWithOk(
-title: .localized("Error"),
-message: .localized("No certificate selected.")
-)
-return
-}
-_isQuickSigning = true
-FR.signPackageFile(
-app,
-using: OptionsManager.shared.options,
-icon: nil,
-certificate: cert
-) { error in
-DispatchQueue.main.async {
-_isQuickSigning = false
-if let error {
-UIAlertController.showAlertWithOk(
-title: .localized("Error"),
-message: error.localizedDescription
-)
-} else {
-NotificationCenter.default.post(name: Notification.Name("Feather.installApp"), object: nil)
-}
-}
-}
-}
-}
-private struct XSignGlassPillModifier: ViewModifier {
-	func body(content: Content) -> some View {
-		if #available(iOS 26, *) {
-content.glassEffect(.regular.interactive(), in: .capsule)
-} else {
-content.background(.ultraThinMaterial, in: Capsule())
-}
-}
+	private func _defaultCertificate() -> CertificatePair? {
+		if _selectedCertIndex >= 0 && _selectedCertIndex < _certificates.count {
+			return _certificates[_selectedCertIndex]
+		}
+		return _certificates.first
+	}
+	
+	private func _quickSignAndInstall(_ app: AppInfoPresentable, certificate: CertificatePair?) {
+		guard let cert = certificate else {
+			UIAlertController.showAlertWithOk(
+				title: .localized("Error"),
+				message: .localized("No certificate selected.")
+			)
+			return
+		}
+		_isQuickSigning = true
+		XSignQuickSigner.signAndInstall(app, certificate: cert) { error in
+			_isQuickSigning = false
+			if let error {
+				UIAlertController.showAlertWithOk(
+					title: .localized("Error"),
+					message: error.localizedDescription
+				)
+			}
+		}
+	}
 }
