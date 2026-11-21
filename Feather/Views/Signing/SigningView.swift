@@ -22,7 +22,12 @@ struct SigningView: View {
 	@State private var _isSigning = false
 	@State private var _selectedPhoto: PhotosPickerItem? = nil
 	@State var appIcon: UIImage?
-	
+	@State private var _showProgressSheet = false
+@State private var _signingProgress: Double = 0.08
+@State private var _signingStepIndex: Int = 1
+@State private var _signingDone = false
+@State private var _signingError: String? = nil
+@State private var _progressTimer: Timer? = nil
 	// MARK: Fetch
 	@FetchRequest(
 		entity: CertificatePair.entity(),
@@ -93,6 +98,31 @@ struct SigningView: View {
 					_temporaryOptions = OptionsManager.shared.options
 					appIcon = nil
 				}
+			}
+			.sheet(isPresented: $_showProgressSheet) {
+	XSignProgressSheet(
+		app: app,
+		appIcon: appIcon,
+		cert: _selectedCert(),
+		progress: _signingProgress,
+		stepIndex: _signingStepIndex,
+		isDone: _signingDone,
+		errorMessage: _signingError,
+		onRetry: {
+			_start()
+		},
+		onInstallNow: {
+			_showProgressSheet = false
+			dismiss()
+			DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+				NotificationCenter.default.post(name: Notification.Name("Feather.installApp"), object: nil)
+			}
+		},
+		onClose: {
+			_showProgressSheet = false
+			dismiss()
+		}
+	)
 			}
 			.sheet(isPresented: $_isAltPickerPresenting) { SigningAlternativeIconView(app: app, appIcon: $appIcon, isModifing: .constant(true)) }
 			.sheet(isPresented: $_isFilePickerPresenting) {
@@ -277,39 +307,213 @@ extension SigningView {
 
 		let generator = UIImpactFeedbackGenerator(style: .light)
 		generator.impactOccurred()
-		_isSigning = true
-		
+			_isSigning = true
+		_showProgressSheet = true
+		_signingProgress = 0.12
+		_signingStepIndex = 1
+		_signingDone = false
+		_signingError = nil
+		_progressTimer?.invalidate()
+		_progressTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
+			DispatchQueue.main.async {
+				if _signingStepIndex < 5 {
+					_signingStepIndex += 1
+					_signingProgress = min(0.88, _signingProgress + 0.19)
+				} else {
+					_signingProgress = min(0.88, _signingProgress + 0.02)
+				}
+			}
+		}
+
 		FR.signPackageFile(
 			app,
 			using: _temporaryOptions,
 			icon: appIcon,
 			certificate: _selectedCert()
 		) { error in
-			if let error {
-				let ok = UIAlertAction(title: .localized("Dismiss"), style: .cancel) { _ in
-					dismiss()
+			DispatchQueue.main.async {
+				_progressTimer?.invalidate()
+				_progressTimer = nil
+
+				if let error {
+					_signingError = error.localizedDescription
+					_isSigning = false
+					return
 				}
-				
-				UIAlertController.showAlert(
-					title: "Error",
-					message: error.localizedDescription,
-					actions: [ok]
-				)
-			} else {
-				if
-					_temporaryOptions.post_deleteAppAfterSigned,
-					!app.isSigned
-				{
+
+				_signingStepIndex = 6
+				_signingProgress = 1.0
+				_signingDone = true
+				_isSigning = false
+
+				if _temporaryOptions.post_deleteAppAfterSigned, !app.isSigned {
 					Storage.shared.deleteApp(for: app)
 				}
-				
+
 				if _temporaryOptions.post_installAppAfterSigned {
-					DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+					DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+						_showProgressSheet = false
+						dismiss()
 						NotificationCenter.default.post(name: Notification.Name("Feather.installApp"), object: nil)
 					}
 				}
-				dismiss()
 			}
 		}
 	}
 }
+
+private struct XSignProgressSheet: View {
+	let app: AppInfoPresentable
+	let appIcon: UIImage?
+	let cert: CertificatePair?
+	let progress: Double
+	let stepIndex: Int
+	let isDone: Bool
+	let errorMessage: String?
+	let onRetry: () -> Void
+	let onInstallNow: () -> Void
+	let onClose: () -> Void
+
+	private let steps: [String] = [
+		"Chuẩn bị tệp & cấu hình",
+		"Giải nén gói IPA",
+		"Nhúng chứng chỉ & hồ sơ",
+		"Ký mã thực thi & frameworks",
+		"Đóng gói lại IPA",
+		"Hoàn tất & sẵn sàng cài đặt"
+	]
+
+	private var certName: String {
+		if let cert {
+			return cert.nickname ?? Storage.shared.getProvisionFileDecoded(for: cert)?.Name ?? .localized("Unknown")
+		}
+		return "Default"
+	}
+
+	var body: some View {
+		NavigationStack {
+			VStack(spacing: 20) {
+				HStack(spacing: 14) {
+					if let icon = appIcon {
+						Image(uiImage: icon)
+							.resizable()
+							.scaledToFill()
+							.frame(width: 56, height: 56)
+							.clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+					} else {
+						FRAppIconView(app: app, size: 56)
+					}
+
+					VStack(alignment: .leading, spacing: 4) {
+						Text(app.name ?? .localized("Unknown"))
+							.font(.headline)
+							.lineLimit(1)
+						Text("Chứng chỉ: \(certName)")
+							.font(.subheadline)
+							.foregroundStyle(.secondary)
+							.lineLimit(1)
+					}
+					Spacer()
+				}
+				.padding()
+				.background(Color(.secondarySystemGroupedBackground))
+				.clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+				VStack(alignment: .leading, spacing: 8) {
+					HStack {
+						Text(errorMessage != nil ? "Ký thất bại" : (isDone ? "Đã ký thành công" : "Đang ký ứng dụng..."))
+							.font(.subheadline.weight(.semibold))
+						Spacer()
+						Text("\(Int(progress * 100))%")
+							.font(.subheadline.monospacedDigit())
+							.foregroundStyle(.secondary)
+					}
+					ProgressView(value: progress, total: 1.0)
+						.tint(errorMessage != nil ? .red : (isDone ? .green : .accentColor))
+				}
+
+				VStack(alignment: .leading, spacing: 12) {
+					ForEach(Array(steps.enumerated()), id: \.offset) { offset, title in
+						let idx = offset + 1
+						HStack(spacing: 12) {
+							if errorMessage != nil && idx == stepIndex {
+								Image(systemName: "xmark.circle.fill")
+									.foregroundStyle(.red)
+									.frame(width: 22, height: 22)
+							} else if isDone || idx < stepIndex {
+								Image(systemName: "checkmark.circle.fill")
+									.foregroundStyle(.green)
+									.frame(width: 22, height: 22)
+							} else if idx == stepIndex {
+								ProgressView()
+									.controlSize(.small)
+									.frame(width: 22, height: 22)
+							} else {
+								Image(systemName: "circle")
+									.foregroundStyle(.secondary.opacity(0.5))
+									.frame(width: 22, height: 22)
+							}
+
+							Text("\(idx). \(title)")
+								.font(.subheadline)
+								.foregroundStyle(idx <= stepIndex || isDone ? .primary : .secondary)
+							Spacer()
+						}
+					}
+				}
+				.padding()
+				.background(Color(.secondarySystemGroupedBackground))
+				.clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+				if let errorMessage {
+					VStack(alignment: .leading, spacing: 10) {
+						Label("Lỗi khi ký", systemImage: "exclamationmark.triangle.fill")
+							.font(.subheadline.weight(.semibold))
+							.foregroundStyle(.red)
+						Text(errorMessage)
+							.font(.caption)
+							.foregroundStyle(.secondary)
+							.frame(maxWidth: .infinity, alignment: .leading)
+						Button {
+							onRetry()
+						} label: {
+							Text("Thử lại")
+								.frame(maxWidth: .infinity)
+						}
+						.buttonStyle(.borderedProminent)
+						.tint(.red)
+					}
+					.padding()
+					.background(Color.red.opacity(0.1))
+					.clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+				}
+
+				Spacer()
+
+				if isDone {
+					HStack(spacing: 12) {
+						Button {
+							onClose()
+						} label: {
+							Text("Đóng")
+								.frame(maxWidth: .infinity)
+						}
+						.buttonStyle(.bordered)
+
+						Button {
+							onInstallNow()
+						} label: {
+							Text("Cài đặt ngay")
+								.frame(maxWidth: .infinity)
+						}
+						.buttonStyle(.borderedProminent)
+					}
+				}
+			}
+			.padding()
+			.navigationTitle("Tiến trình ký")
+			.navigationBarTitleDisplayMode(.inline)
+		}
+		.interactiveDismissDisabled(!isDone && errorMessage == nil)
+	}
+}	
