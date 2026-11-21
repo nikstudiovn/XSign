@@ -17,6 +17,7 @@ struct LibraryView: View {
 	@State private var _selectedInfoAppPresenting: AnyApp?
 	@State private var _selectedSigningAppPresenting: AnyApp?
 	@State private var _selectedInstallAppPresenting: AnyApp?
+	@State private var _isBatchQueuePresenting = false
 	@State private var _isImportingPresenting = false
 	@State private var _isDownloadingPresenting = false
 	@State private var _alertDownloadString: String = "" // for _isDownloadingPresenting
@@ -173,6 +174,7 @@ struct LibraryView: View {
 						.disabled(updateManager.isChecking)
 						.accessibilityLabel(.localized("Check for Updates"))
 					}
+					ToolbarItem(placement: .topBarTrailing) { Button { _isBatchQueuePresenting = true } label: { Label("Ký hàng loạt", systemImage: "square.stack.3d.up") } }
 					
 					NBToolbarMenu(
 						systemImage: "plus",
@@ -183,7 +185,7 @@ struct LibraryView: View {
 					}
 				}
 			}
-			.environment(\.editMode, $_editMode)
+			.environment(\.editMode, $_editMode) .sheet(isPresented: $_isBatchQueuePresenting) { XSignBatchQueueSheet(apps: Array(_importedApps)) }
 			.sheet(item: $_selectedInfoAppPresenting) { app in
 				LibraryInfoView(app: app.base)
 			}
@@ -331,4 +333,211 @@ extension LibraryView {
 			}
 		}
 	}
+
+private struct XSignBatchQueueSheet: View {
+	let apps: [Imported]
+
+	@Environment(\.dismiss) private var dismiss
+
+	@FetchRequest(
+		entity: CertificatePair.entity(),
+		sortDescriptors: [NSSortDescriptor(keyPath: \CertificatePair.date, ascending: false)]
+	) private var certificates: FetchedResults<CertificatePair>
+
+	@State private var _selectedIds: Set<NSManagedObjectID> = []
+	@State private var _selectedCerts: [NSManagedObjectID: CertificatePair] = [:]
+	@State private var _statuses: [NSManagedObjectID: String] = [:]
+	@State private var _isRunning = false
+	@State private var _completedCount = 0
+
+	private var _selectedApps: [Imported] {
+		apps.filter { _selectedIds.contains($0.objectID) }
+	}
+
+	private func _certName(for cert: CertificatePair?) -> String {
+		guard let cert else { return "Chưa có chứng chỉ" }
+		return cert.nickname ?? Storage.shared.getProvisionFileDecoded(for: cert)?.Name ?? .localized("Unknown")
+	}
+
+	private func _statusColor(for status: String) -> Color {
+		if status == "Thành công" { return .green }
+		if status.hasPrefix("Lỗi") { return .red }
+		if status == "Đang ký..." { return .accentColor }
+		return .secondary
+	}
+
+	var body: some View {
+		NavigationStack {
+			VStack(spacing: 0) {
+				if _isRunning || _completedCount > 0 {
+					VStack(alignment: .leading, spacing: 6) {
+						HStack {
+							Text(_isRunning ? "Đang ký hàng loạt..." : "Hoàn tất hàng đợi")
+								.font(.subheadline.weight(.semibold))
+							Spacer()
+							Text("\(_completedCount)/\(_selectedApps.count)")
+								.font(.subheadline.monospacedDigit())
+								.foregroundStyle(.secondary)
+						}
+						ProgressView(
+							value: Double(_completedCount),
+							total: Double(max(1, _selectedApps.count))
+						)
+					}
+					.padding()
+					.background(Color(.secondarySystemGroupedBackground))
+				}
+
+				List {
+					if apps.isEmpty {
+						Text("Chưa có IPA nào được nhập.")
+							.foregroundStyle(.secondary)
+					} else {
+						ForEach(apps, id: \.objectID) { app in
+							let id = app.objectID
+							let isSelected = _selectedIds.contains(id)
+							let currentCert = _selectedCerts[id] ?? certificates.first
+							let status = _statuses[id] ?? (isSelected ? "Đang chờ" : "")
+
+							VStack(alignment: .leading, spacing: 8) {
+								HStack(spacing: 12) {
+									Button {
+										guard !_isRunning else { return }
+										if isSelected {
+											_selectedIds.remove(id)
+										} else {
+											_selectedIds.insert(id)
+											if _selectedCerts[id] == nil, let first = certificates.first {
+												_selectedCerts[id] = first
+											}
+										}
+									} label: {
+										Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+											.font(.title3)
+											.foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
+									}
+									.buttonStyle(.plain)
+
+									FRAppIconView(app: app, size: 40)
+
+									VStack(alignment: .leading, spacing: 2) {
+										Text(app.name ?? .localized("Unknown"))
+											.font(.headline)
+											.lineLimit(1)
+										if !status.isEmpty {
+											Text(status)
+												.font(.caption.weight(.medium))
+												.foregroundStyle(_statusColor(for: status))
+												.lineLimit(2)
+										}
+									}
+
+									Spacer()
+								}
+
+								if isSelected && !certificates.isEmpty {
+									HStack {
+										Text("Chứng chỉ:")
+											.font(.caption)
+											.foregroundStyle(.secondary)
+										Spacer()
+										Menu {
+											ForEach(certificates, id: \.objectID) { cert in
+												Button {
+													_selectedCerts[id] = cert
+												} label: {
+													Text(_certName(for: cert))
+												}
+											}
+										} label: {
+											HStack(spacing: 4) {
+												Text(_certName(for: currentCert))
+													.font(.caption.weight(.medium))
+													.lineLimit(1)
+												Image(systemName: "chevron.up.chevron.down")
+													.font(.caption2)
+											}
+										}
+										.disabled(_isRunning)
+									}
+									.padding(.leading, 36)
+								}
+							}
+							.padding(.vertical, 4)
+						}
+					}
+				}
+			}
+			.navigationTitle("Ký hàng loạt")
+			.navigationBarTitleDisplayMode(.inline)
+			.toolbar {
+				ToolbarItem(placement: .topBarLeading) {
+					Button("Đóng") {
+						dismiss()
+					}
+					.disabled(_isRunning)
+				}
+				ToolbarItem(placement: .topBarTrailing) {
+					Button("Bắt đầu ký hàng loạt") {
+						_startBatchSigning()
+					}
+					.disabled(_isRunning || _selectedApps.isEmpty || certificates.isEmpty)
+				}
+			}
+			.onAppear {
+				if let first = certificates.first {
+					for app in apps where _selectedCerts[app.objectID] == nil {
+						_selectedCerts[app.objectID] = first
+					}
+				}
+			}
+			.interactiveDismissDisabled(_isRunning)
+		}
+	}
+
+	private func _startBatchSigning() {
+		let targets = _selectedApps
+		guard !targets.isEmpty else { return }
+
+		_isRunning = true
+		_completedCount = 0
+		for app in targets {
+			_statuses[app.objectID] = "Đang chờ"
+		}
+
+		Task {
+			for app in targets {
+				let id = app.objectID
+				let cert = _selectedCerts[id] ?? certificates.first
+				await MainActor.run {
+					_statuses[id] = "Đang ký..."
+				}
+
+				let errorMessage: String? = await withCheckedContinuation { continuation in
+					FR.signPackageFile(
+						app,
+						using: OptionsManager.shared.options,
+						icon: nil,
+						certificate: cert
+					) { error in
+						continuation.resume(returning: error?.localizedDescription)
+					}
+				}
+
+				await MainActor.run {
+					if let errorMessage {
+						_statuses[id] = "Lỗi: \(errorMessage)"
+					} else {
+						_statuses[id] = "Thành công"
+					}
+					_completedCount += 1
+				}
+			}
+
+			await MainActor.run {
+				_isRunning = false
+			}
+		}
+	}
+}
 }
