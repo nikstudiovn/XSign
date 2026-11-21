@@ -16,6 +16,9 @@ struct LibraryCellView: View {
 	@ObservedObject private var updateManager = UpdateManager.shared
 	@State private var _signedUpdateConfirmation: AppUpdate?
 	@State private var _isSignedUpdateConfirmationPresented = false
+	@FetchRequest(entity: CertificatePair.entity(), sortDescriptors: [NSSortDescriptor(keyPath: \CertificatePair.date, ascending: false)]) private var _certificates: FetchedResults<CertificatePair>
+	@AppStorage("feather.selectedCert") private var _selectedCertIndex: Int = 0
+	@State private var _isQuickSigning = false
 
 	var certInfo: Date.ExpirationInfo? {
 		Storage.shared.getCertificate(from: app)?.expiration?.expirationInfo()
@@ -243,15 +246,37 @@ extension LibraryCellView {
 					)
 				}
 			} else {
-				Button {
-					selectedSigningAppPresenting = AnyApp(base: app)
-				} label: {
-					FRExpirationPillView(
-						title: .localized("Sign"),
-						revoked: false,
-						expiration: nil
-					)
-				}
+			Button {
+_quickSignAndInstall(app, certificate: _defaultCertificate())
+} label: {
+Group {
+if _isQuickSigning {
+ProgressView()
+} else {
+Text("Ký & cài")
+.font(.subheadline.weight(.semibold))
+}
+}
+.padding(.horizontal, 12)
+.padding(.vertical, 6)
+.modifier(XSignGlassPillModifier())
+}
+.disabled(_isQuickSigning)
+.contextMenu {
+ForEach(_certificates, id: \.objectID) { cert in
+Button {
+_quickSignAndInstall(app, certificate: cert)
+} label: {
+Label(cert.nickname ?? .localized("Certificate"), systemImage: "checkmark.seal")
+}
+}
+Divider()
+Button {
+selectedSigningAppPresenting = AnyApp(base: app)
+} label: {
+Label("Tùy chỉnh trước khi ký", systemImage: "slider.horizontal.3")
+}
+}
 			}
 		}
 		.buttonStyle(.borderless)
@@ -264,4 +289,49 @@ extension LibraryCellView {
 			sourceProvenance: update.sourceProvenance
 		)
 	}
+	
+private func _defaultCertificate() -> CertificatePair? {
+if _selectedCertIndex >= 0 && _selectedCertIndex < _certificates.count {
+return _certificates[_selectedCertIndex]
+}
+return _certificates.first
+}
+
+private func _quickSignAndInstall(_ app: AppInfoPresentable, certificate: CertificatePair?) {
+guard let cert = certificate else {
+UIAlertController.showAlertWithOk(
+title: .localized("Error"),
+message: .localized("No certificate selected.")
+)
+return
+}
+_isQuickSigning = true
+FR.signPackageFile(
+app,
+using: OptionsManager.shared.options,
+icon: nil,
+certificate: cert
+) { error in
+DispatchQueue.main.async {
+_isQuickSigning = false
+if let error {
+UIAlertController.showAlertWithOk(
+title: .localized("Error"),
+message: error.localizedDescription
+)
+} else {
+NotificationCenter.default.post(name: Notification.Name("Feather.installApp"), object: nil)
+}
+}
+}
+}
+}
+private struct XSignGlassPillModifier: ViewModifier {
+	func body(content: Content) -> some View {
+		if #available(iOS 26, *) {
+content.glassEffect(.regular.interactive(), in: .capsule)
+} else {
+content.background(.ultraThinMaterial, in: Capsule())
+}
+}
 }
