@@ -17,7 +17,7 @@ struct LibraryCellView: View {
 	@State private var _signedUpdateConfirmation: AppUpdate?
 	@State private var _isSignedUpdateConfirmationPresented = false
 	@FetchRequest(entity: CertificatePair.entity(), sortDescriptors: [NSSortDescriptor(keyPath: \CertificatePair.date, ascending: false)]) private var _certificates: FetchedResults<CertificatePair>
-	@AppStorage("feather.selectedCert") private var _selectedCertIndex: Int = 0
+	@AppStorage("XSign.selectedCert") private var _selectedCertIndex: Int = 0
 	@State private var _isQuickSigning = false
 
 	var certInfo: Date.ExpirationInfo? {
