@@ -1275,7 +1275,7 @@
         "cs" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Všechny soubory Featheru jsou v složce Dokumenty, zde jsou na ně rychlé odkazy."
+            "value" : "Všechny soubory XSignu jsou v složce Dokumenty, zde jsou na ně rychlé odkazy."
           }
         },
         "de" : {
@@ -1293,7 +1293,7 @@
         "id" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Semua berkas Feather berada di direktori dokumen, berikut beberapa tautan cepat ke berkas-berkas tersebut."
+            "value" : "Semua berkas XSign berada di direktori dokumen, berikut beberapa tautan cepat ke berkas-berkas tersebut."
           }
         },
         "it" : {
@@ -1311,7 +1311,7 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wszystkie pliki Feather znajdują się w katalogu dokumentów, oto szybkie odnośniki do nich."
+            "value" : "Wszystkie pliki XSign znajdują się w katalogu dokumentów, oto szybkie odnośniki do nich."
           }
         },
         "tr" : {
@@ -1323,7 +1323,7 @@
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tất cả các file của Feather có thể được tìm thấy trong ứng dụng Tệp, đây là một số liên kết nhanh đến chúng."
+            "value" : "Tất cả các file của XSign có thể được tìm thấy trong ứng dụng Tệp, đây là một số liên kết nhanh đến chúng."
           }
         },
         "zh-Hans" : {
@@ -15376,7 +15376,7 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bağış yaparak desteğinizi gösterin! Eğer bağış yapamıyorsanız Feather’ı dilden dile yaymak da işe yarar!"
+            "value" : "Bağış yaparak desteğinizi gösterin! Eğer bağış yapamıyorsanız XSign’ı dilden dile yaymak da işe yarar!"
           }
         },
         "vi" : {
