@@ -2,6 +2,7 @@ import SwiftUI
 import NimbleViews
 import Security
 
+// MARK: - OCSP Status
 enum XSignOCSPStatus: String {
 	case good
 	case revoked
