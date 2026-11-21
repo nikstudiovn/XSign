@@ -38,12 +38,25 @@ extension ServerInstaller {
 		return comps.url!
 	}
 	
+	/// Manifest URL (percent-encoded once more, ready to be used as the `url` value of an
+	/// itms-services link) for the first configured manifest server.
 	var externalServerLink: String {
-		let baseUrl = "https://api.palera.in/genPlist?bundleid=\(app.identifier!)&name=\(app.name!)&version=\(app.version!)&fetchurl=\(self.payloadEndpoint.absoluteString)"
-		let encodedBaseUrl = baseUrl.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)!
-		let finalEncodedUrl = encodedBaseUrl.addingPercentEncoding(withAllowedCharacters: .alphanumerics)!
-		
-		return finalEncodedUrl
+		externalServerLink(base: Self.manifestServerCandidates.first ?? Self.defaultManifestServer)
+	}
+	
+	/// Builds `<base>/genPlist?bundleid=&name=&version=&fetchurl=` with every value
+	/// percent-encoded, then encodes the whole manifest URL for the itms-services `url` parameter.
+	func externalServerLink(base: String) -> String {
+		let name = (app.name ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+		let version = (app.version ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+		let params: [(String, String)] = [
+			("bundleid", app.identifier ?? ""),
+			("name", name.isEmpty ? "App" : name),
+			("version", version.isEmpty ? "1.0" : version),
+			("fetchurl", payloadEndpoint.absoluteString),
+		]
+		let query = params.map { "\($0.0)=\(Self._percentEncode($0.1))" }.joined(separator: "&")
+		return Self._percentEncode("\(base)/genPlist?\(query)")
 	}
 
 	var iTunesLink: String {
@@ -52,6 +65,17 @@ extension ServerInstaller {
 	
 	var iTunesLinkExternal: String {
 		_iTunesLink(with: externalServerLink)
+	}
+	
+	/// XSign: picks the first reachable manifest server (custom URL, then the XSign worker),
+	/// checked via `/health`, and falls back to api.palera.in.
+	func resolveITunesLinkExternal() async -> String {
+		for base in Self.manifestServerCandidates where base != Self.legacyManifestServer {
+			if await Self.isManifestServerHealthy(base) {
+				return _iTunesLink(with: externalServerLink(base: base))
+			}
+		}
+		return _iTunesLink(with: externalServerLink(base: Self.legacyManifestServer))
 	}
 	
 	private func _iTunesLink(with url: String) -> String {
@@ -132,5 +156,63 @@ extension ServerInstaller {
 			format: .xml,
 			options: .zero
 		)) ?? .init()
+	}
+}
+
+// MARK: - Manifest server (XSign)
+extension ServerInstaller {
+	/// UserDefaults key for the custom manifest server URL set in Server settings.
+	static let manifestServerKey = "XSign.manifestServer"
+	/// XSign Cloudflare Worker (see /worker in the repository).
+	static let defaultManifestServer = "https://xsign.nikvix.workers.dev"
+	/// Last-resort fallback, same /genPlist parameters, no /health endpoint.
+	static let legacyManifestServer = "https://api.palera.in"
+	
+	private static let _unreserved = CharacterSet(
+		charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"
+	)
+	
+	private static func _percentEncode(_ value: String) -> String {
+		value.addingPercentEncoding(withAllowedCharacters: _unreserved) ?? value
+	}
+	
+	/// Returns a trimmed `https://host[/path]` without trailing slash, or nil if invalid.
+	static func normalizedManifestServer(_ raw: String) -> String? {
+		var value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+		while value.hasSuffix("/") { value.removeLast() }
+		guard
+			!value.isEmpty,
+			let url = URL(string: value),
+			url.scheme?.lowercased() == "https",
+			let host = url.host, !host.isEmpty,
+			url.query == nil
+		else { return nil }
+		return value
+	}
+	
+	/// Custom server (if valid), then the XSign worker, then api.palera.in.
+	static var manifestServerCandidates: [String] {
+		var list: [String] = []
+		if let custom = normalizedManifestServer(UserDefaults.standard.string(forKey: manifestServerKey) ?? "") {
+			list.append(custom)
+		}
+		for server in [defaultManifestServer, legacyManifestServer] where !list.contains(server) {
+			list.append(server)
+		}
+		return list
+	}
+	
+	/// `GET <base>/health` must answer `ok` within the timeout.
+	static func isManifestServerHealthy(_ base: String, timeout: TimeInterval = 3) async -> Bool {
+		guard let url = URL(string: base + "/health") else { return false }
+		var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: timeout)
+		request.httpMethod = "GET"
+		do {
+			let (data, response) = try await URLSession.shared.data(for: request)
+			guard (response as? HTTPURLResponse)?.statusCode == 200 else { return false }
+			return String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines) == "ok"
+		} catch {
+			return false
+		}
 	}
 }
