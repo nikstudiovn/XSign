@@ -14,6 +14,7 @@ import IDeviceSwift
 // MARK: - View
 struct SettingsView: View {
 	@AppStorage("XSign.selectedCert") private var _storedSelectedCert: Int = 0
+	@AppStorage("XSign.appLanguage") private var _appLanguage: String = "system"
 	@State private var _currentIcon: String? = UIApplication.shared.alternateIconName
 	
 	// MARK: Fetch
@@ -54,6 +55,23 @@ struct SettingsView: View {
 					NavigationLink(destination: AppIconView(currentIcon: $_currentIcon)) {
 						Label(.localized("App Icon"), systemImage: "sparkles.square.filled.on.square")
 					}
+				Picker(selection: $_appLanguage) {
+					Text("Hệ thống").tag("system")
+					Text("Tiếng Việt").tag("vi")
+					Text("English").tag("en")
+				} label: {
+					Label("Ngôn ngữ", systemImage: "globe")
+				}
+				.onChange(of: _appLanguage) { _, newValue in
+					if newValue == "system" {
+						UserDefaults.standard.removeObject(forKey: "AppleLanguages")
+					} else {
+						UserDefaults.standard.set([newValue], forKey: "AppleLanguages")
+					}
+				}
+				NavigationLink(destination: XSignStorageCleanerView()) {
+					Label("Dọn dẹp bộ nhớ nhanh", systemImage: "sparkles")
+				}
 				}
                 
 				NBSection(.localized("Certificates")) {
@@ -169,5 +187,174 @@ Label("Mở thư mục XSign trong Tệp", systemImage: "folder.badge.gearshape"
 		} footer: {
 			Text(.localized("All of the apps files are contained in the documents directory, here are some quick links to these."))
 		}
+	}
+}
+struct XSignStorageCleanerView: View {
+	struct CleanTarget: Identifiable {
+		let id: String
+		let title: String
+		let icon: String
+		let directories: [URL]
+		var size: Int64 = 0
+		var isSelected: Bool
+	}
+
+	@State private var _targets: [CleanTarget] = [
+		CleanTarget(
+			id: "cache",
+			title: "Tệp tạm & Bộ nhớ đệm",
+			icon: "memorychip",
+			directories: [
+				FileManager.default.temporaryDirectory,
+				FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
+			].compactMap { $0 },
+			isSelected: true
+		),
+		CleanTarget(
+			id: "archives",
+			title: "Thư mục Archives",
+			icon: "archivebox",
+			directories: [FileManager.default.archives],
+			isSelected: false
+		),
+		CleanTarget(
+			id: "signed",
+			title: "Ứng dụng đã ký (Signed)",
+			icon: "signature",
+			directories: [FileManager.default.signed],
+			isSelected: false
+		),
+		CleanTarget(
+			id: "input",
+			title: "Thư mục InputFile",
+			icon: "tray.and.arrow.down",
+			directories: [URL.documentsDirectory.appendingPathComponent("InputFile")],
+			isSelected: false
+		)
+	]
+
+	@State private var _isScanning = false
+	@State private var _isCleaning = false
+	@State private var _showConfirmAlert = false
+	@State private var _showResultAlert = false
+	@State private var _freedBytes: Int64 = 0
+
+	private var _selectedSize: Int64 {
+		_targets.filter(\.isSelected).reduce(0) { $0 + $1.size }
+	}
+
+	var body: some View {
+		List {
+			Section {
+				ForEach($_targets) { $target in
+					Toggle(isOn: $target.isSelected) {
+						HStack {
+							Label(target.title, systemImage: target.icon)
+							Spacer()
+							Text(_formatBytes(target.size))
+								.font(.subheadline)
+								.foregroundStyle(.secondary)
+						}
+					}
+				}
+			} header: {
+				Text("Chọn mục cần dọn dẹp")
+			} footer: {
+				Text("Tổng dung lượng đã chọn: \(_formatBytes(_selectedSize))")
+			}
+
+			Section {
+				Button(role: .destructive) {
+					_showConfirmAlert = true
+				} label: {
+					HStack {
+						Spacer()
+						if _isCleaning {
+							ProgressView()
+						} else {
+							Label("Dọn các mục đã chọn", systemImage: "trash.slash")
+								.fontWeight(.semibold)
+						}
+						Spacer()
+					}
+				}
+				.disabled(_isScanning || _isCleaning || _targets.allSatisfy { !$0.isSelected })
+			}
+		}
+		.navigationTitle("Dọn dẹp bộ nhớ nhanh")
+		.navigationBarTitleDisplayMode(.inline)
+		.task {
+			await _scanStorage()
+		}
+		.refreshable {
+			await _scanStorage()
+		}
+		.alert("Xác nhận dọn dẹp", isPresented: $_showConfirmAlert) {
+			Button("Hủy", role: .cancel) {}
+			Button("Dọn ngay", role: .destructive) {
+				Task { await _cleanSelected() }
+			}
+		} message: {
+			Text("Bạn có chắc muốn xóa các mục đã chọn (\(_formatBytes(_selectedSize)))? Hành động này không thể hoàn tác.")
+		}
+		.alert("Đã dọn dẹp xong", isPresented: $_showResultAlert) {
+			Button("OK", role: .cancel) {}
+		} message: {
+			Text("Đã giải phóng chính xác \(_formatBytes(_freedBytes)) bộ nhớ.")
+		}
+	}
+
+	private func _formatBytes(_ bytes: Int64) -> String {
+		ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
+	}
+
+	private func _scanStorage() async {
+		_isScanning = true
+		let scanned = await Task.detached(priority: .utility) { () -> [Int64] in
+			_targets.map { target in
+				target.directories.reduce(0) { $0 + Self._directorySize($1) }
+			}
+		}.value
+		for i in _targets.indices where i < scanned.count {
+			_targets[i].size = scanned[i]
+		}
+		_isScanning = false
+	}
+
+	private func _cleanSelected() async {
+		_isCleaning = true
+		let selectedDirs = _targets.filter(\.isSelected).flatMap(\.directories)
+		let beforeTotal = _selectedSize
+		await Task.detached(priority: .userInitiated) {
+			let fm = FileManager.default
+			for dir in selectedDirs {
+				guard let items = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) else { continue }
+				for item in items {
+					try? fm.removeItem(at: item)
+				}
+			}
+		}.value
+		await _scanStorage()
+		let afterTotal = _targets.filter(\.isSelected).reduce(0) { $0 + $1.size }
+		_freedBytes = max(0, beforeTotal - afterTotal)
+		_isCleaning = false
+		_showResultAlert = true
+	}
+
+	nonisolated private static func _directorySize(_ url: URL) -> Int64 {
+		let fm = FileManager.default
+		guard let enumerator = fm.enumerator(
+			at: url,
+			includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey],
+			options: [.skipsHiddenFiles]
+		) else { return 0 }
+		var total: Int64 = 0
+		for case let fileURL as URL in enumerator {
+			guard let values = try? fileURL.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey]),
+				  values.isRegularFile == true,
+				  let size = values.fileSize else { continue }
+			total += Int64(size)
+		}
+		return total
 	}
 }
