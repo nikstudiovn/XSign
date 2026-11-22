@@ -230,10 +230,13 @@ extension SigningView {
 					)
 				}
 			} else {
-				Text(.localized("No Certificate"))
+				if certificates.isEmpty {
+										NavigationLink { CertificatesView() } label: { Label(xsignT("Chưa có chứng chỉ · Chạm để nhập", "No Certificate · Tap to Import"), systemImage: "checkmark.seal.fill") } } else {
+																																																						 Text(.localized("No Certificate"))
 					.font(.footnote)
 					.foregroundColor(.disabled())
-			}
+			}}
+			
 		}
 	}
 	
@@ -384,12 +387,12 @@ private struct XSignProgressSheet: View {
 	let onClose: () -> Void
 
 	private let steps: [String] = [
-		"Chuẩn bị tệp & cấu hình",
-		"Giải nén gói IPA",
-		"Nhúng chứng chỉ & hồ sơ",
-		"Ký mã thực thi & frameworks",
-		"Đóng gói lại IPA",
-		"Hoàn tất & sẵn sàng cài đặt"
+		xsignT("Chuẩn bị tệp & cấu hình", "Preparing files & configuration"),
+		xsignT("Giải nén gói IPA", "Extracting IPA package"),
+		xsignT("Nhúng chứng chỉ & hồ sơ", "Embedding certificate & profile"),
+		xsignT("Ký mã thực thi & frameworks", "Signing executable & frameworks"),
+		xsignT("Đóng gói lại IPA", "Repackaging IPA"),
+		xsignT("Hoàn tất & sẵn sàng cài đặt", "Done & ready to install")
 	]
 
 	private var certName: String {
@@ -417,7 +420,7 @@ private struct XSignProgressSheet: View {
 						Text(app.name ?? .localized("Unknown"))
 							.font(.headline)
 							.lineLimit(1)
-						Text("Chứng chỉ: \(certName)")
+						Text("\(xsignT("Chứng chỉ", "Certificate")): \(certName)")
 							.font(.subheadline)
 							.foregroundStyle(.secondary)
 							.lineLimit(1)
@@ -430,7 +433,7 @@ private struct XSignProgressSheet: View {
 
 				VStack(alignment: .leading, spacing: 8) {
 					HStack {
-						Text(errorMessage != nil ? "Ký thất bại" : (isDone ? "Đã ký thành công" : "Đang ký ứng dụng..."))
+						Text(errorMessage != nil ? xsignT("Ký thất bại", "Signing failed") : (isDone ? xsignT("Đã ký thành công", "Signed successfully") : xsignT("Đang ký ứng dụng...", "Signing app...")))
 							.font(.subheadline.weight(.semibold))
 						Spacer()
 						Text("\(Int(progress * 100))%")
@@ -476,7 +479,7 @@ private struct XSignProgressSheet: View {
 
 				if let errorMessage {
 					VStack(alignment: .leading, spacing: 10) {
-						Label("Lỗi khi ký", systemImage: "exclamationmark.triangle.fill")
+						Label(xsignT("Lỗi khi ký", "Signing error"), systemImage: "exclamationmark.triangle.fill")
 							.font(.subheadline.weight(.semibold))
 							.foregroundStyle(.red)
 						Text(errorMessage)
@@ -486,7 +489,7 @@ private struct XSignProgressSheet: View {
 						Button {
 							onRetry()
 						} label: {
-							Text("Thử lại")
+							Text(xsignT("Thử lại", "Retry"))
 								.frame(maxWidth: .infinity)
 						}
 						.buttonStyle(.borderedProminent)
@@ -504,7 +507,7 @@ private struct XSignProgressSheet: View {
 						Button {
 							onClose()
 						} label: {
-							Text("Đóng")
+							Text(xsignT("Đóng", "Close"))
 								.frame(maxWidth: .infinity)
 						}
 						.buttonStyle(.bordered)
@@ -512,7 +515,7 @@ private struct XSignProgressSheet: View {
 						Button {
 							onInstallNow()
 						} label: {
-							Text("Cài đặt ngay")
+							Text(xsignT("Cài đặt ngay", "Install Now"))
 								.frame(maxWidth: .infinity)
 						}
 						.buttonStyle(.borderedProminent)
@@ -520,7 +523,7 @@ private struct XSignProgressSheet: View {
 				}
 			}
 			.padding()
-			.navigationTitle("Tiến trình ký")
+			.navigationTitle(xsignT("Tiến trình ký", "Signing Progress"))
 			.navigationBarTitleDisplayMode(.inline)
 		}
 		.interactiveDismissDisabled(!isDone && errorMessage == nil)
