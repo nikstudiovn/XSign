@@ -99,6 +99,8 @@ struct XSignFolderBrowserView: View {
 @State private var _certTempDir: URL? = nil
 @State private var _showCertPasswordAlert: Bool = false
 @State private var _certAlertMessage: String? = nil
+@State private var _isPickingMissingCertPair = false
+@State private var _missingPairNeedsProvision = true
 
 private var _allSelectedAreIPA: Bool {
 !selectedURLs.isEmpty && selectedURLs.allSatisfy { !_isDirectory($0) && _isIPA($0) }
@@ -360,6 +362,9 @@ content
 				}
 			)
 		}
+.sheet(isPresented: $_isPickingMissingCertPair) {
+	FileImporterRepresentableView(allowedContentTypes: [.item], allowsMultipleSelection: false, onDocumentsPicked: { urls in if let url = urls.first { if _missingPairNeedsProvision { _certPendingProvision = url } else { _certPendingP12 = url }; if _certPendingP12 != nil && _certPendingProvision != nil { _showCertPasswordAlert = true } } })
+}
 }
 
 @ViewBuilder
