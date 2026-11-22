@@ -8,6 +8,7 @@
 
 import SwiftUI
 import NukeUI
+private enum ExtendedTabSelection: Hashable { case tab(TabEnum); case search }
 
 @available(iOS 18, *)
 struct ExtendedTabbarView: View {
@@ -16,7 +17,8 @@ struct ExtendedTabbarView: View {
 	@StateObject var viewModel = SourcesViewModel.shared
 	
 	@State private var _isAddingPresenting = false
-	
+	@State private var _selectedTab: ExtendedTabSelection = .tab(.sources)
+	@State private var _lastNonSearchTab: TabEnum = .sources
 	@FetchRequest(
 		entity: AltSource.entity(),
 		sortDescriptors: [NSSortDescriptor(keyPath: \AltSource.name, ascending: true)],
@@ -24,21 +26,21 @@ struct ExtendedTabbarView: View {
 	) private var _sources: FetchedResults<AltSource>
 		
 	var body: some View {
-		TabView {
+		TabView(selection: $_selectedTab) {
 			ForEach(TabEnum.defaultTabs, id: \.hashValue) { tab in
-				Tab(tab.title, systemImage: tab.icon) {
+				Tab(tab.title, systemImage: tab.icon, value: ExtendedTabSelection.tab(tab)) { 
 					TabEnum.view(for: tab)
 				}
 			}
 			
-			Tab("Tìm kiếm", systemImage: "magnifyingglass", role: .search) {
+			Tab("Tìm kiếm", systemImage: "magnifyingglass", value: ExtendedTabSelection.search, role: .search) {
 				NavigationStack {
-					GlobalSearchView()
+					GlobalSearchView(onExitSearch: { _selectedTab = .tab(_lastNonSearchTab) })
 				}
 			}
 			
 			ForEach(TabEnum.customizableTabs, id: \.hashValue) { tab in
-				Tab(tab.title, systemImage: tab.icon) {
+				Tab(tab.title, systemImage: tab.icon, value: ExtendedTabSelection.tab(tab)) {
 					TabEnum.view(for: tab)
 				}
 				.customizationID("tab.\(tab.rawValue)")
@@ -82,7 +84,7 @@ struct ExtendedTabbarView: View {
 		.sheet(isPresented: $_isAddingPresenting) {
 			SourcesAddView()
 				.presentationDetents([.medium])
-		}
+		} .onChange(of: _selectedTab) { _, newValue in if case .tab(let t) = newValue { _lastNonSearchTab = t } }
 	}
 	
 	@ViewBuilder
