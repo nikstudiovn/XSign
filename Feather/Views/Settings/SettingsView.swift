@@ -56,11 +56,11 @@ struct SettingsView: View {
 						Label(.localized("App Icon"), systemImage: "sparkles.square.filled.on.square")
 					}
 				Picker(selection: $_appLanguage) {
-					Text("Hệ thống").tag("system")
+					Text(xsignT("Hệ thống", "System")).tag("system")
 					Text("Tiếng Việt").tag("vi")
 					Text("English").tag("en")
 				} label: {
-					Label("Ngôn ngữ", systemImage: "globe")
+					Label(xsignT("Ngôn ngữ", "Language"), systemImage: "globe")
 				}
 				.onChange(of: _appLanguage) { newValue in
 					if newValue == "system" {
@@ -70,7 +70,7 @@ struct SettingsView: View {
 					}
 				}
 				NavigationLink(destination: XSignStorageCleanerView()) {
-					Label("Dọn dẹp bộ nhớ nhanh", systemImage: "sparkles")
+					Label(xsignT("Dọn dẹp bộ nhớ nhanh", "Quick Storage Cleaner"), systemImage: "sparkles")
 				}
 				}
                 
@@ -140,7 +140,7 @@ extension SettingsView {
 			Button(.localized("GitHub Repository"), systemImage: "chevron.left.forwardslash.chevron.right") {
 				UIApplication.open(_githubUrl)
 			} 
-			Button("Kênh Telegram (@nikvn21)", systemImage: "paperplane.fill") {
+			Button(xsignT("Kênh Telegram (@nikvn21)", "Telegram Channel (@nikvn21)"), systemImage: "paperplane.fill") {
 				UIApplication.open("https://t.me/nikvn21")
 			}
 		} footer: {
@@ -202,7 +202,7 @@ struct XSignStorageCleanerView: View {
 	@State private var _targets: [CleanTarget] = [
 		CleanTarget(
 			id: "cache",
-			title: "Tệp tạm & Bộ nhớ đệm",
+			title: xsignT("Tệp tạm & Bộ nhớ đệm", "Temp Files & Cache"),
 			icon: "memorychip",
 			directories: [
 				FileManager.default.temporaryDirectory,
@@ -212,21 +212,21 @@ struct XSignStorageCleanerView: View {
 		),
 		CleanTarget(
 			id: "archives",
-			title: "Thư mục Archives",
+			title: xsignT("Thư mục Archives", "Archives Folder"),
 			icon: "archivebox",
 			directories: [FileManager.default.archives],
 			isSelected: false
 		),
 		CleanTarget(
 			id: "signed",
-			title: "Ứng dụng đã ký (Signed)",
+			title: xsignT("Ứng dụng đã ký (Signed)", "Signed Apps"),
 			icon: "signature",
 			directories: [FileManager.default.signed],
 			isSelected: false
 		),
 		CleanTarget(
 			id: "input",
-			title: "Thư mục InputFile",
+			title: xsignT("Thư mục InputFile", "InputFile Folder"),
 			icon: "tray.and.arrow.down",
 			directories: [URL.documentsDirectory.appendingPathComponent("InputFile")],
 			isSelected: false
@@ -258,9 +258,9 @@ struct XSignStorageCleanerView: View {
 					}
 				}
 			} header: {
-				Text("Chọn mục cần dọn dẹp")
+				Text(xsignT("Chọn mục cần dọn dẹp", "Select Items to Clean"))
 			} footer: {
-				Text("Tổng dung lượng đã chọn: \(_formatBytes(_selectedSize))")
+				Text("\(xsignT("Tổng dung lượng đã chọn:", "Total selected:")) \(_formatBytes(_selectedSize))")
 			}
 
 			Section {
@@ -272,7 +272,7 @@ struct XSignStorageCleanerView: View {
 						if _isCleaning {
 							ProgressView()
 						} else {
-							Label("Dọn các mục đã chọn", systemImage: "trash.slash")
+							Label(xsignT("Dọn các mục đã chọn", "Clean Selected Items"), systemImage: "trash.slash")
 								.fontWeight(.semibold)
 						}
 						Spacer()
@@ -281,7 +281,7 @@ struct XSignStorageCleanerView: View {
 				.disabled(_isScanning || _isCleaning || _targets.allSatisfy { !$0.isSelected })
 			}
 		}
-		.navigationTitle("Dọn dẹp bộ nhớ nhanh")
+		.navigationTitle(xsignT("Dọn dẹp bộ nhớ nhanh", "Quick Storage Cleaner"))
 		.navigationBarTitleDisplayMode(.inline)
 		.task {
 			await _scanStorage()
@@ -289,18 +289,18 @@ struct XSignStorageCleanerView: View {
 		.refreshable {
 			await _scanStorage()
 		}
-		.alert("Xác nhận dọn dẹp", isPresented: $_showConfirmAlert) {
-			Button("Hủy", role: .cancel) {}
-			Button("Dọn ngay", role: .destructive) {
+		.alert(xsignT("Xác nhận dọn dẹp", "Confirm Cleanup"), isPresented: $_showConfirmAlert) {
+			Button(xsignT("Hủy", "Cancel"), role: .cancel) {}
+			Button(xsignT("Dọn ngay", "Clean Now"), role: .destructive) {
 				Task { await _cleanSelected() }
 			}
 		} message: {
-			Text("Bạn có chắc muốn xóa các mục đã chọn (\(_formatBytes(_selectedSize)))? Hành động này không thể hoàn tác.")
+			Text("\(xsignT("Bạn có chắc muốn xóa các mục đã chọn", "Are you sure you want to delete the selected items")) (\(_formatBytes(_selectedSize)))? \(xsignT("Hành động này không thể hoàn tác.", "This action cannot be undone."))")
 		}
-		.alert("Đã dọn dẹp xong", isPresented: $_showResultAlert) {
+		.alert(xsignT("Đã dọn dẹp xong", "Cleanup Complete"), isPresented: $_showResultAlert) {
 			Button("OK", role: .cancel) {}
 		} message: {
-			Text("Đã giải phóng chính xác \(_formatBytes(_freedBytes)) bộ nhớ.")
+			Text("\(xsignT("Đã giải phóng chính xác", "Freed")) \(_formatBytes(_freedBytes)) \(xsignT("bộ nhớ.", "of storage."))")
 		}
 	}
 
