@@ -14,18 +14,18 @@
       "tintColor": "848ef9",
       "versions": [
         {
-          "version": "2.9.0",
+          "version": "1.0.0",
           "date": "2026-11-20T00:00:00Z",
           "size": 0,
-          "downloadURL": "https://github.com/nikstudiovn/XSign/releases/download/v2.9.0/XSign.ipa"
+          "downloadURL": "https://github.com/nikstudiovn/XSign/releases/download/v1.0.0/XSign.ipa"
         }
       ],
       "appPermissions": {},
       "screenshotURLs": [],
-      "version": "2.9.0",
+      "version": "1.0.0",
       "versionDate": "2026-11-20T00:00:00Z",
       "size": 0,
-      "downloadURL": "https://github.com/nikstudiovn/XSign/releases/download/v2.9.0/XSign.ipa"
+      "downloadURL": "https://github.com/nikstudiovn/XSign/releases/download/v1.0.0/XSign.ipa"
     }
   ],
   "news": [
