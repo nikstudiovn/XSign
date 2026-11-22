@@ -293,7 +293,19 @@ let onFinished: () -> Void
 @State private var _isExiting = false
 @State private var _overlayOpacity: Double = 1
 @State private var _overlayScale: CGFloat = 1.0
-
+    private var _launchColors: (glow1: Color, glow2: Color, accent: Color) {
+		let altIcon = UIApplication.shared.alternateIconName
+		switch altIcon {
+case "V2Mac": return (Color.purple, Color.indigo, Color(red: 0.72, green: 0.48, blue: 1.0))
+		case "V1": return (Color.cyan, Color.blue, Color.cyan)
+case "V1Mac": return (Color.white, Color(white: 0.72), Color(white: 0.88))
+case "V0": return (Color(red: 0.16, green: 0.84, blue: 0.60), Color.teal, Color.mint)
+case "Donor": return (Color(white: 0.65), Color(white: 0.35), Color(white: 0.78))
+case "Wing": return (Color(red: 0.95, green: 0.22, blue: 0.32), Color.red, Color(red: 1.0, green: 0.35, blue: 0.42))
+default: return (Color.cyan, Color(red: 0.22, green: 0.56, blue: 0.98), Color(red: 0.35, green: 0.78, blue: 1.0))
+}
+	}
+	
 var body: some View {
 ZStack {
 LinearGradient(
@@ -309,8 +321,8 @@ endPoint: .bottomTrailing
 
 RadialGradient(
 colors: [
-Color.cyan.opacity(0.28),
-Color(red: 0.55, green: 0.35, blue: 0.95).opacity(0.20),
+_launchColors.glow1.opacity(0.28),
+_launchColors.glow2.opacity(0.20),
 Color.clear
 ],
 center: .center,
@@ -332,7 +344,7 @@ Text("XSign")
 LinearGradient(
 colors: [
 .white,
-Color(red: 0.76, green: 0.94, blue: 1.0)
+_launchColors.accent
 ],
 startPoint: .topLeading,
 endPoint: .bottomTrailing
@@ -349,10 +361,23 @@ endPoint: .bottomTrailing
 _runAnimation()
 }
 }
+    @ViewBuilder
+private var _activeIconView: some View {
+if let altIcon = UIApplication.shared.alternateIconName,
+let uiImage = UIImage(named: altIcon) {
+Image(uiImage: uiImage)
+.resizable()
+.scaledToFill()
+.frame(width: 104, height: 104)
+.clipShape(RoundedRectangle(cornerRadius: 23.4, style: .continuous))
+} else {
+FRAppIconView(size: 104)
+}
+}
 	
 @ViewBuilder
 private var _iconContainer: some View {
-let baseIcon = FRAppIconView(size: 104)
+let baseIcon = _activeIconView
 .overlay {
 if !reduceMotion {
 LinearGradient(
@@ -375,7 +400,7 @@ endPoint: .bottomTrailing
 if #available(iOS 26, *) {
 baseIcon
 .glassEffect(.regular, in: .rect(cornerRadius: 26))
-.shadow(color: Color.cyan.opacity(0.25), radius: 24, y: 10)
+.shadow(color: _launchColors.accent.opacity(0.25), radius: 24, y: 10)
 } else {
 baseIcon
 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
@@ -383,7 +408,7 @@ baseIcon
 RoundedRectangle(cornerRadius: 26, style: .continuous)
 .strokeBorder(Color.white.opacity(0.22), lineWidth: 1)
 )
-.shadow(color: Color.cyan.opacity(0.25), radius: 24, y: 10)
+.shadow(color: _launchColors.accent.opacity(0.25), radius: 24, y: 10)
 }
 }
 
@@ -429,3 +454,13 @@ onFinished()
 }
 }
 }
+
+func xsignT(_ vi: String, _ en: String) -> String {
+let lang = UserDefaults.standard.string(forKey: "XSign.appLanguage") ?? "system"
+switch lang {
+case "en": return en
+case "vi": return vi
+default: return Locale.preferredLanguages.first?.hasPrefix("vi") == true ? vi : en
+}
+}
+
