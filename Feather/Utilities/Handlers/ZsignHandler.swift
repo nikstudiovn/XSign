@@ -44,7 +44,7 @@ final class ZsignHandler {
 	
 	func sign() async throws {
 		guard let cert = _certificate else {
-			throw SigningFileHandlerError.missingCertificate
+			throw SigningFileHandlerError.missingCertifcate
 		}
 
 		guard let provisionURL = Storage.shared.getFile(.provision, from: cert), FileManager.default.fileExists(atPath: provisionURL.path), let p12URL = Storage.shared.getFile(.certificate, from: cert), FileManager.default.fileExists(atPath: p12URL.path) else { throw SigningFileHandlerError.certificateFileMissing }
