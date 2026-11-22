@@ -96,7 +96,9 @@ extension Storage {
 		kind: SourceLinkedAppKind,
 		provenance: SourceAppProvenance
 	) {
-		let metadata = sourceMetadata(for: appUUID) ?? AppSourceMetadata(context: context)
+		context.perform { [weak self] in
+			guard let self else { return }			 
+		let metadata = self.sourceMetadata(for: appUUID) ?? AppSourceMetadata(context: self.context)
 		let now = Date()
 		
 		if metadata.createdAt == nil {
@@ -116,7 +118,8 @@ extension Storage {
 		metadata.sourceVersionID = provenance.sourceVersionID
 		metadata.updatedAt = now
 		
-		saveContext()
+		self.saveContext()
+	}
 	}
 	
 	func copySourceMetadata(
@@ -129,8 +132,10 @@ extension Storage {
 		else {
 			return
 		}
+		context.perform { [weak self] in
+			guard let self else { return }			 
 		
-		guard let source = sourceMetadata(for: sourceAppUUID) else {
+		guard let source = self.sourceMetadata(for: sourceAppUUID) else {
 			return
 		}
 		
@@ -142,7 +147,7 @@ extension Storage {
 			return
 		}
 		
-		let metadata = sourceMetadata(for: destinationAppUUID) ?? AppSourceMetadata(context: context)
+		let metadata = self.sourceMetadata(for: destinationAppUUID) ?? AppSourceMetadata(context: self.context)
 		let now = Date()
 		if metadata.createdAt == nil {
 			metadata.createdAt = now
@@ -160,33 +165,40 @@ extension Storage {
 		metadata.sourceVersionID = versionID
 		metadata.updatedAt = now
 		
-		saveContext()
+		self.saveContext()
+	}
 	}
 	
 	func deleteSourceMetadata(for appUUID: String?) {
 		guard let appUUID else {
 			return
 		}
+		context.perform { [weak self] in
+			guard let self else { return }			 
 		
 		let request: NSFetchRequest<AppSourceMetadata> = AppSourceMetadata.fetchRequest()
 		request.predicate = NSPredicate(format: "appUUID == %@", appUUID)
 		
 		do {
-			let metadata = try context.fetch(request)
-			metadata.forEach(context.delete)
-			saveContext()
+			let metadata = try self.context.fetch(request)
+			metadata.forEach(self.context.delete)
+			self.saveContext()
 		} catch {
 		}
 	}
+	}
 	
 	func deleteSourceMetadata(kind: SourceLinkedAppKind) {
+		context.perform { [weak self] in
+			guard let self else { return }			 
 		let request: NSFetchRequest<AppSourceMetadata> = AppSourceMetadata.fetchRequest()
 		request.predicate = NSPredicate(format: "appKind == %@", kind.rawValue)
 		
 		do {
 			let deleteRequest = NSBatchDeleteRequest(fetchRequest: request as! NSFetchRequest<NSFetchRequestResult>)
-			try context.execute(deleteRequest)
+			try self.context.execute(deleteRequest)
 		} catch {
 		}
+						}				 
 	}
 }
