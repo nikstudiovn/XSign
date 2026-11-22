@@ -92,6 +92,13 @@ struct XSignFolderBrowserView: View {
 	@State private var isShowingImportSuccess: Bool = false
 @State private var isMultiSelecting: Bool = false
 @State private var selectedURLs: Set<URL> = []
+@State private var _certPendingP12: URL? = nil
+@State private var _certPendingProvision: URL? = nil
+@State private var _certPasswordInput: String = ""
+@State private var _certNicknameInput: String = ""
+@State private var _certTempDir: URL? = nil
+@State private var _showCertPasswordAlert: Bool = false
+@State private var _certAlertMessage: String? = nil
 
 private var _allSelectedAreIPA: Bool {
 !selectedURLs.isEmpty && selectedURLs.allSatisfy { !_isDirectory($0) && _isIPA($0) }
@@ -160,8 +167,24 @@ _rowView(for: url, isDirectory: isDir)
 							.buttonStyle(.bordered)
 							.controlSize(.small)
 						}
-						} else {
-							Button {
+							
+} else if _isCertificateImportable(url) {
+HStack {
+Button {
+quickLookItem = QuickLookItem(url: url)
+} label: {
+_rowView(for: url, isDirectory: false)
+}
+.tint(.primary)
+Spacer()
+Button("Nhập chứng chỉ") {
+_prepareCertificateImport(from: url)
+}
+.buttonStyle(.bordered)
+.controlSize(.small)
+}
+} else {
+Button {
 								quickLookItem = QuickLookItem(url: url)
 							} label: {
 								_rowView(for: url, isDirectory: false)
@@ -177,6 +200,13 @@ _rowView(for: url, isDirectory: isDir)
 						}
 					}
 					.contextMenu {
+if !isDir && _isCertificateImportable(url) {
+Button {
+_prepareCertificateImport(from: url)
+} label: {
+Label("Nhập chứng chỉ", systemImage: "checkmark.seal")
+}
+}
 					if !isDir && _isIPA(url) {
 						Button {
 							_importIPAToLibrary(url)
@@ -333,11 +363,177 @@ Label("Xóa", systemImage: "trash")
 		} message: {
 			Text(importSuccessMessage ?? "")
 		}
+.alert("Nhập chứng chỉ", isPresented: $_showCertPasswordAlert) {
+TextField("Tên gợi nhớ (tùy chọn)", text: $_certNicknameInput)
+SecureField("Mật khẩu .p12", text: $_certPasswordInput)
+Button("Lưu") {
+_confirmCertificateImport()
+}
+Button("Hủy", role: .cancel) {
+_cleanupCertTempDir()
+}
+} message: {
+Text("Nhập tên gợi nhớ và mật khẩu cho chứng chỉ.")
+}
+.alert("Thông báo chứng chỉ", isPresented: Binding(
+get: { _certAlertMessage != nil },
+set: { if !$0 { _certAlertMessage = nil } }
+)) {
+Button("OK", role: .cancel) {}
+} message: {
+Text(_certAlertMessage ?? "")
+}
 	}
 
 	private func _isIPA(_ url: URL) -> Bool {
-		let ext = url.pathExtension.lowercased()
-		return ext == "ipa" || ext == "tipa"
+let ext = url.pathExtension.lowercased()
+return ext == "ipa" || ext == "tipa"
+	}
+
+private func _isCertificateImportable(_ url: URL) -> Bool {
+let ext = url.pathExtension.lowercased()
+return ext == "p12" || ext == "mobileprovision" || ext == "zip"
+}
+
+private func _prepareCertificateImport(from url: URL) {
+_cleanupCertTempDir()
+_certPasswordInput = ""
+_certNicknameInput = url.deletingPathExtension().lastPathComponent
+let ext = url.pathExtension.lowercased()
+
+if ext == "p12" || ext == "mobileprovision" {
+let contents = (try? FileManager.default.contentsOfDirectory(
+at: directory,
+includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey],
+options: [.skipsHiddenFiles]
+)) ?? []
+let baseName = url.deletingPathExtension().lastPathComponent.lowercased()
+var p12URL: URL? = ext == "p12" ? url : nil
+var provURL: URL? = ext == "mobileprovision" ? url : nil
+
+if p12URL == nil {
+let p12Candidates = contents.filter { $0.pathExtension.lowercased() == "p12" }
+p12URL = p12Candidates.first(where: { $0.deletingPathExtension().lastPathComponent.lowercased() == baseName }) ?? p12Candidates.first
+}
+if provURL == nil {
+let provCandidates = contents.filter { $0.pathExtension.lowercased() == "mobileprovision" }
+provURL = provCandidates.first(where: { $0.deletingPathExtension().lastPathComponent.lowercased() == baseName }) ?? provCandidates.first
+}
+
+guard let foundP12 = p12URL else {
+_certAlertMessage = "Không tìm thấy tệp .p12 đi kèm trong thư mục."
+return
+}
+guard let foundProv = provURL else {
+_certAlertMessage = "Không tìm thấy tệp .mobileprovision đi kèm trong thư mục."
+return
+}
+
+for item in contents where item.pathExtension.lowercased() == "txt" {
+if let pw = _readCertPasswordTxt(from: item) {
+_certPasswordInput = pw
+break
+}
+}
+
+_certPendingP12 = foundP12
+_certPendingProvision = foundProv
+_showCertPasswordAlert = true
+} else if ext == "zip" {
+do {
+let tempDir = FileManager.default.temporaryDirectory
+.appendingPathComponent("XSignCertImport_\(UUID().uuidString)", isDirectory: true)
+try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+try Zip.unzipFile(url, destination: tempDir, overwrite: true, password: nil)
+_certTempDir = tempDir
+
+var foundP12: URL? = nil
+var foundProv: URL? = nil
+var foundPassword: String? = nil
+
+if let enumerator = FileManager.default.enumerator(
+at: tempDir,
+includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey],
+options: [.skipsHiddenFiles]
+) {
+for case let fileURL as URL in enumerator {
+if fileURL.pathComponents.contains("__MACOSX") || fileURL.lastPathComponent.hasPrefix("._") {
+continue
+}
+let values = try? fileURL.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey])
+guard values?.isRegularFile == true else { continue }
+let fileExt = fileURL.pathExtension.lowercased()
+if fileExt == "p12" && foundP12 == nil {
+foundP12 = fileURL
+} else if fileExt == "mobileprovision" && foundProv == nil {
+foundProv = fileURL
+} else if fileExt == "txt" && foundPassword == nil {
+foundPassword = _readCertPasswordTxt(from: fileURL)
+}
+}
+}
+
+guard let p12 = foundP12, let prov = foundProv else {
+_cleanupCertTempDir()
+_certAlertMessage = "Tệp ZIP không chứa đủ cả .p12 và .mobileprovision."
+return
+}
+
+_certPendingP12 = p12
+_certPendingProvision = prov
+if let pw = foundPassword {
+_certPasswordInput = pw
+}
+_showCertPasswordAlert = true
+} catch {
+_cleanupCertTempDir()
+_certAlertMessage = "Không thể giải nén tệp ZIP: \(error.localizedDescription)"
+}
+}
+}
+
+private func _readCertPasswordTxt(from url: URL) -> String? {
+let values = try? url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey])
+guard values?.isRegularFile == true, (values?.fileSize ?? Int.max) <= 4096 else {
+return nil
+}
+guard let raw = try? String(contentsOf: url, encoding: .utf8) else {
+return nil
+}
+let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+return trimmed.isEmpty ? nil : trimmed
+}
+
+private func _confirmCertificateImport() {
+guard let p12 = _certPendingP12, let prov = _certPendingProvision else {
+_cleanupCertTempDir()
+return
+}
+guard FR.checkPasswordForCertificate(for: p12, with: _certPasswordInput, using: prov) else {
+_cleanupCertTempDir()
+_certAlertMessage = "Mật khẩu .p12 không đúng hoặc chứng chỉ không hợp lệ."
+return
+}
+FR.handleCertificateFiles(
+p12URL: p12,
+provisionURL: prov,
+p12Password: _certPasswordInput,
+certificateName: _certNicknameInput
+) { _ in
+DispatchQueue.main.async {
+_cleanupCertTempDir()
+_certAlertMessage = "Đã nhập chứng chỉ thành công."
+}
+}
+}
+
+private func _cleanupCertTempDir() {
+if let tempDir = _certTempDir {
+try? FileManager.default.removeItem(at: tempDir)
+_certTempDir = nil
+}
+_certPendingP12 = nil
+_certPendingProvision = nil
 	}
 
 	private func _importIPAToLibrary(_ url: URL) {
