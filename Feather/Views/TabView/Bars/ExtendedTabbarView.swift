@@ -19,6 +19,8 @@ struct ExtendedTabbarView: View {
 	@State private var _isAddingPresenting = false
 	@State private var _selectedTab: ExtendedTabSelection = .tab(.sources)
 	@State private var _lastNonSearchTab: TabEnum = .sources
+	@State private var _previousTab: TabEnum = .library
+
 	@FetchRequest(
 		entity: AltSource.entity(),
 		sortDescriptors: [NSSortDescriptor(keyPath: \AltSource.name, ascending: true)],
@@ -37,6 +39,7 @@ struct ExtendedTabbarView: View {
 				NavigationStack {
 					GlobalSearchView(onExitSearch: { _selectedTab = .tab(_lastNonSearchTab) })
 				}
+				.simultaneousGesture(DragGesture(minimumDistance: 24).onEnded { value in if value.translation.width > 70 && abs(value.translation.width) > abs(value.translation.height) * 1.4 { withAnimation(.smooth) { _selectedTab = .tab(_previousTab) } } })
 			}
 			
 			ForEach(TabEnum.customizableTabs, id: \.hashValue) { tab in
@@ -84,7 +87,7 @@ struct ExtendedTabbarView: View {
 		.sheet(isPresented: $_isAddingPresenting) {
 			SourcesAddView()
 				.presentationDetents([.medium])
-		} .onChange(of: _selectedTab) { _, newValue in if case .tab(let t) = newValue { _lastNonSearchTab = t } }
+		} .onChange(of: _selectedTab) { _, newValue in if case .tab(let t) = newValue { _lastNonSearchTab = t; _previousTab = t } }
 	}
 	
 	@ViewBuilder
