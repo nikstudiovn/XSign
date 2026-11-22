@@ -63,6 +63,11 @@ struct SourcesAddView: View {
 	
 	@State private var _isImporting = false
 	@State private var _sourceURL = ""
+		@State private var _isLoadingRecommended = false
+	@State private var _failedRecommendedURLs: [URL] = []
+	private var _fallbackRecommendedURLs: [URL] {
+		_failedRecommendedURLs.filter { !Storage.shared.sourceExists($0.absoluteString) }
+	}
 	
 	// MARK: Body
 	var body: some View {
@@ -108,8 +113,15 @@ struct SourcesAddView: View {
 					Text(.localized("Supports importing from KravaSign/MapleSign and ESign."))
 				}
 				
-				if !_filteredRecommendedSourcesData.isEmpty {
+				if !_filteredRecommendedSourcesData.isEmpty || _isLoadingRecommended || !_fallbackRecommendedURLs.isEmpty {
 					NBSection("Nguồn đề xuất") {
+if _isLoadingRecommended && _filteredRecommendedSourcesData.isEmpty {
+HStack {
+ProgressView()
+Text("Đang tải nguồn đề xuất...")
+}
+}
+	
 						ForEach(_filteredRecommendedSourcesData, id: \.url) { (url, source) in
 							HStack(spacing: 2) {
 								FRIconCellView(
@@ -126,6 +138,27 @@ struct SourcesAddView: View {
 								}
 							}
 						}
+ForEach(_fallbackRecommendedURLs, id: \.self) { url in
+HStack(spacing: 2) {
+FRIconCellView(
+title: url.host ?? url.lastPathComponent,
+subtitle: url.absoluteString,
+iconUrl: nil
+)
+Button {
+Storage.shared.addSource(
+url,
+name: url.host ?? "Nguồn",
+identifier: url.absoluteString
+) { _ in
+_failedRecommendedURLs.removeAll { $0 == url }
+_refreshFilteredRecommendedSourcesData()
+}
+} label: {
+NBButton("Thêm", systemImage: "arrow.down", style: .text)
+}
+}
+											  }
 					} footer: {
 						Text(.localized("Open an [issue](https://github.com/claration/Feather/issues) on GitHub if you want your source to be featured."))
 					}
@@ -195,6 +228,10 @@ struct SourcesAddView: View {
 		var results: [(url: URL, data: ASRepository)] = []
 		
 		let dataService = _dataService
+await MainActor.run {
+_isLoadingRecommended = true
+_failedRecommendedURLs = []
+}
 		
 		await withTaskGroup(of: Void.self) { group in
 			for url in urls {
@@ -204,9 +241,18 @@ struct SourcesAddView: View {
 							switch result {
 							case .success(let repo):
 								Task { @MainActor in
+if !recommendedSourcesData.contains(where: { $0.url == url }) {
+recommendedSourcesData.append((url: url, data: repo))
+}
+_refreshFilteredRecommendedSourcesData()
 									results.append((url: url, data: repo))
 								}
 							case .failure(let error):
+Task { @MainActor in
+if !_failedRecommendedURLs.contains(url) {
+_failedRecommendedURLs.append(url)
+}
+	 }
 								Logger.misc.error("Failed to fetch \(url): \(error.localizedDescription)")
 							}
 							continuation.resume()
@@ -216,6 +262,9 @@ struct SourcesAddView: View {
 			}
 			await group.waitForAll()
 		}
+await MainActor.run {
+_isLoadingRecommended = false
+}
 		
 		return results
 	}
