@@ -107,6 +107,7 @@ final class SigningHandler: NSObject {
 			try await _mergeEntitlements(for: movedAppPath, with: _options)
 		}
 		
+		try _validateMainExecutableMachO(in: movedAppPath, infoDictionary: infoDictionary)
 		let handler = ZsignHandler(appUrl: movedAppPath, options: _options, cert: appCertificate)
 		try await handler.disinject()
 		
@@ -123,12 +124,10 @@ final class SigningHandler: NSObject {
 			throw SigningFileHandlerError.missingCertifcate
 		}
 		
+		if let error = handler.hadError { throw error }
 		try await self.move()
 		try await self.addToDatabase()
 		
-		if let error = handler.hadError {
-			throw error
-		}
 	}
 	
 	func move() async throws {
@@ -558,6 +557,40 @@ extension SigningHandler {
 		
 		return results
 	}
+
+	private func _validateMainExecutableMachO(in app: URL, infoDictionary: NSMutableDictionary) throws {
+		guard let executableName = infoDictionary["CFBundleExecutable"] as? String, !executableName.isEmpty else { throw SigningFileHandlerError.corruptedMachO }
+let executableURL = app.appendingPathComponent(executableName)
+guard _fileManager.fileExists(atPath: executableURL.path), let attrs = try? _fileManager.attributesOfItem(atPath: executableURL.path), let fileSize = (attrs[.size] as? NSNumber)?.uint64Value, fileSize >= 4 else { throw SigningFileHandlerError.corruptedMachO }
+let handle = try FileHandle(forReadingFrom: executableURL)
+defer { try? handle.close() }
+let headerData = handle.readData(ofLength: 32)
+guard headerData.count >= 4 else { throw SigningFileHandlerError.corruptedMachO }
+func readUInt32(_ offset: Int, bigEndian: Bool) -> UInt32 {
+let b0 = UInt32(headerData[offset]), b1 = UInt32(headerData[offset + 1]), b2 = UInt32(headerData[offset + 2]), b3 = UInt32(headerData[offset + 3])
+return bigEndian ? ((b0 << 24) | (b1 << 16) | (b2 << 8) | b3) : ((b3 << 24) | (b2 << 16) | (b1 << 8) | b0)
+}
+let magic = readUInt32(0, bigEndian: true)
+switch magic {
+case 0xCAFEBABE, 0xBEBAFECA:
+let isBigEndian = (magic == 0xCAFEBABE)
+guard headerData.count >= 8, fileSize >= 8 else { throw SigningFileHandlerError.corruptedMachO }
+let nfatArch = readUInt32(4, bigEndian: isBigEndian)
+guard nfatArch > 0, 8 + UInt64(nfatArch) * 20 <= fileSize else { throw SigningFileHandlerError.corruptedMachO }
+case 0xFEEDFACE, 0xCEFAEDFE:
+let isBigEndian = (magic == 0xFEEDFACE)
+guard headerData.count >= 28, fileSize >= 28 else { throw SigningFileHandlerError.corruptedMachO }
+let sizeofcmds = readUInt32(20, bigEndian: isBigEndian)
+guard 28 + UInt64(sizeofcmds) <= fileSize else { throw SigningFileHandlerError.corruptedMachO }
+case 0xFEEDFACF, 0xCFFAEDFE:
+let isBigEndian = (magic == 0xFEEDFACF)
+guard headerData.count >= 32, fileSize >= 32 else { throw SigningFileHandlerError.corruptedMachO }
+let sizeofcmds = readUInt32(20, bigEndian: isBigEndian)
+guard 32 + UInt64(sizeofcmds) <= fileSize else { throw SigningFileHandlerError.corruptedMachO }
+default:
+throw SigningFileHandlerError.corruptedMachO
+}
+			}
 }
 
 enum SigningFileHandlerError: Error, LocalizedError {
@@ -565,6 +598,8 @@ enum SigningFileHandlerError: Error, LocalizedError {
 	case infoPlistNotFound
 	case missingCertifcate
 	case disinjectFailed
+	case certificateFileMissing
+	case corruptedMachO
 	case signFailed
 	
 	var errorDescription: String? {
@@ -573,7 +608,9 @@ enum SigningFileHandlerError: Error, LocalizedError {
 		case .infoPlistNotFound: "Unable to locate info.plist path."
 		case .missingCertifcate: "No certificate was specified."
 		case .disinjectFailed: "Removing mach-O load paths failed."
-		case .signFailed: "Signing failed."
+		case .certificateFileMissing: "Certificate or provisioning profile file is missing on disk."
+			case .corruptedMachO: "App executable Mach-O binary is missing or corrupted."
+			case .signFailed: "Signing failed."
 		}
 	}
 }
