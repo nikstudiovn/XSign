@@ -20,6 +20,7 @@ struct FeatherApp: App {
 	let storage = Storage.shared
 @State private var _showLaunchOverlay = true
 @Environment(\.accessibilityReduceMotion) private var _reduceMotion
+	@AppStorage("XSign.appLanguage") private var _appLanguage: String = "system"
 	
 	var body: some Scene {
 		WindowGroup {
@@ -58,6 +59,7 @@ _showLaunchOverlay = false
 .zIndex(999)
 }
 }
+			.environment(\.locale, _appLanguage == "system" ? .current : Locale(identifier: _appLanguage))
 		}
 	}
 	
