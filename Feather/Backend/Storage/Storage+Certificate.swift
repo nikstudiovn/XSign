@@ -20,9 +20,10 @@ extension Storage {
 		isDefault: Bool = false,
 		completion: @escaping (Error?) -> Void
 	) {
-		let generator = UIImpactFeedbackGenerator(style: .light)
+		context.perform { [weak self] in
+						 guard let self else { DispatchQueue.main.async { completion(nil) }; return }
 		
-		let new = CertificatePair(context: context)
+		let new = CertificatePair(context: self.context)
 		new.uuid = uuid
 		new.date = Date()
 		new.password = password
@@ -31,17 +32,24 @@ extension Storage {
 		new.nickname = nickname
 		new.isDefault = isDefault
 		Storage.shared.revokagedCertificate(for: new)
-		saveContext()
-		generator.impactOccurred()
+		self.saveContext()
+		DispatchQueue.main.async {
+								  let generator = UIImpactFeedbackGenerator(style: .light)
+			generator.impactOccurred()
 		completion(nil)
+		}
+						}
 	}
 	
 	func deleteCertificate(for cert: CertificatePair) {
 		if let url = getUuidDirectory(for: cert) {
 			try? FileManager.default.removeItem(at: url)
 		}
-		context.delete(cert)
-		saveContext()
+		context.perform { [weak self] in
+						 guard let self else { return }
+						 self.context.delete(cert)
+		self.saveContext()
+						}
 	}
 	
 	func getCertificate(for index: Int) -> CertificatePair? {
@@ -67,7 +75,7 @@ extension Storage {
 			p12Password: cert.password ?? ""
 		) { (status, _, _) in
 			if status == 1 {
-				DispatchQueue.main.async {
+				self.context.perform {
 					cert.revoked = true
 					self.saveContext()
 				}
