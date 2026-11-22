@@ -109,7 +109,7 @@ struct SourcesAddView: View {
 				}
 				
 				if !_filteredRecommendedSourcesData.isEmpty {
-					NBSection(.localized("Featured")) {
+					NBSection("Nguồn đề xuất") {
 						ForEach(_filteredRecommendedSourcesData, id: \.url) { (url, source) in
 							HStack(spacing: 2) {
 								FRIconCellView(
