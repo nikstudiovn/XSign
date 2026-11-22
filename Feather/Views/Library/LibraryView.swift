@@ -210,7 +210,7 @@ struct LibraryView: View {
 						}
 					}
 				}
-				if _filteredSignedApps.isEmpty, _filteredImportedApps.isEmpty { if #available(iOS 17, *) { Section { ContentUnavailableView { Label(.localized("No Apps"), systemImage: "questionmark.app.fill") } description: { Text(.localized("Get started by importing your first IPA file.")) } actions: { Menu { _importActions() } label: { NBButton(.localized("Import"), style: .text) } } .frame(maxWidth: .infinity) .padding(.vertical, 24) .listRowBackground(Color.clear) .listRowSeparator(.hidden) } } }
+				if _filteredSignedApps.isEmpty, _filteredImportedApps.isEmpty { if #available(iOS 17, *) { Section { ContentUnavailableView { Label(.localized("No Apps"), systemImage: "app.badge.checkmark") } description: { Text(.localized("Get started by importing your first IPA file.")) } actions: { Menu { _importActions() } label: { NBButton(.localized("Import"), style: .text) } } .frame(maxWidth: .infinity) .padding(.vertical, 24) .listRowBackground(Color.clear) .listRowSeparator(.hidden) } } }
 			}
 			.scrollContentBackground(.hidden)
 			.background { XSignAmbientBackground() }
@@ -253,7 +253,7 @@ struct LibraryView: View {
 								await _checkForUpdates()
 							}
 						} label: {
-							Image(systemName: _isUpdateCheckCompleteVisible ? "checkmark.circle.fill" : "arrow.triangle.2.circlepath")
+							Image(systemName: _isUpdateCheckCompleteVisible ? "checkmark.circle.fill" : "arrow.clockwise")
 								.rotationEffect(.degrees(_updateCheckRotation))
 								.animation(
 									updateManager.isChecking
@@ -375,7 +375,7 @@ extension LibraryView {
 		Button(.localized("Import from Files"), systemImage: "folder") {
 			_isImportingPresenting = true
 		}
-		Button(.localized("Import from URL"), systemImage: "globe") {
+		Button(.localized("Import from URL"), systemImage: "link") {
 			_isDownloadingPresenting = true
 		}
 	}
