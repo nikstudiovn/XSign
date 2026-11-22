@@ -41,7 +41,7 @@ struct SourcesView: View {
 						} label: {
 							let isRegular = horizontalSizeClass != .compact
 							HStack(spacing: 18) {
-								Image("Repositories").appIconStyle()
+								Image(systemName: "globe").font(.title2.weight(.semibold)).foregroundStyle(Color.accentColor).frame(width: 48, height: 48).background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.accentColor.opacity(0.15)))
 								NBTitleWithSubtitleView(
 									title: .localized("All Repositories"),
 									subtitle: .localized("See all apps from your sources")
@@ -80,7 +80,7 @@ struct SourcesView: View {
 				if _filteredSources.isEmpty {
 					if #available(iOS 17, *) {
 						ContentUnavailableView {
-							Label(.localized("No Repositories"), systemImage: "globe.desk.fill")
+							Label(.localized("No Repositories"), systemImage: "globe")
 						} description: {
 							Text(.localized("Get started by adding your first repository."))
 						} actions: {
