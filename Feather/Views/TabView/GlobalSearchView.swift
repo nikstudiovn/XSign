@@ -8,6 +8,7 @@
 import SwiftUI
 import AltSourceKit
 import NimbleViews
+import QuickLook
 
 // MARK: - Settings search index
 private struct SettingsSearchItem: Identifiable {
@@ -69,6 +70,10 @@ struct GlobalSearchView: View {
 	@StateObject private var _viewModel = SourcesViewModel.shared
 	@State private var _searchText = ""
 	@State private var _selectedInfoApp: AnyApp?
+var onExitSearch: (() -> Void)? = nil
+@State private var _quickLookURL: URL? = nil
+@State private var _allFiles: [URL] = []
+@State private var _importNotice: String? = nil
 	
 	@FetchRequest(
 		entity: Signed.entity(),
@@ -131,6 +136,13 @@ struct GlobalSearchView: View {
 		guard !_query.isEmpty else { return [] }
 		return SettingsSearchItem.all.filter { $0.matches(_query) }
 	}
+
+private var _fileHits: [URL] {
+guard !_query.isEmpty else { return [] }
+return _allFiles.filter {
+$0.lastPathComponent.localizedCaseInsensitiveContains(_query)
+}
+}
 	
 	var body: some View {
 		let library = _libraryHits
@@ -141,7 +153,7 @@ struct GlobalSearchView: View {
 			if _query.isEmpty {
 				Text("Nhập tên ứng dụng, bundle ID hoặc mục cài đặt để tìm kiếm.")
 					.foregroundStyle(.secondary)
-			} else if library.isEmpty && sources.isEmpty && settings.isEmpty {
+			} else if library.isEmpty && sources.isEmpty && settings.isEmpty  && _fileHits.isEmpty{
 				Text("Không tìm thấy kết quả")
 					.foregroundStyle(.secondary)
 			} else {
@@ -184,6 +196,41 @@ struct GlobalSearchView: View {
 						}
 					}
 				}
+if !_fileHits.isEmpty {
+Section("Tệp") {
+ForEach(_fileHits, id: \.self) { url in
+let ext = url.pathExtension.lowercased()
+HStack(spacing: 12) {
+Button {
+_quickLookURL = url
+} label: {
+HStack(spacing: 10) {
+Image(systemName: (ext == "ipa" || ext == "tipa") ? "shippingbox.fill" : "doc.fill")
+.foregroundStyle(.secondary)
+VStack(alignment: .leading, spacing: 2) {
+Text(url.lastPathComponent)
+.foregroundStyle(.primary)
+.lineLimit(1)
+Text(url.deletingLastPathComponent().lastPathComponent)
+.font(.caption)
+.foregroundStyle(.secondary)
+}
+}
+.frame(maxWidth: .infinity, alignment: .leading)
+}
+.buttonStyle(.plain)
+
+if ext == "ipa" || ext == "tipa" {
+Button("Thêm") {
+_importFileToLibrary(url)
+}
+.buttonStyle(.bordered)
+.controlSize(.small)
+}
+}
+}
+}
+}
 				
 				if !settings.isEmpty {
 					Section("Cài đặt") {
@@ -199,14 +246,73 @@ struct GlobalSearchView: View {
 			}
 		}
 		.navigationTitle("Tìm kiếm")
-		.searchable(text: $_searchText, prompt: "Thư viện, Nguồn, Cài đặt")
+		.searchable(text: $_searchText, prompt: "Thư viện, Nguồn,Tệp,  Cài đặt")
 		.autocorrectionDisabled()
 		.textInputAutocapitalization(.never)
 		.task {
+_loadSearchableFiles()
 			await _viewModel.fetchSources(_sources)
 		}
 		.sheet(item: $_selectedInfoApp) { app in
 			LibraryInfoView(app: app.base)
 		}
+.quickLookPreview($_quickLookURL)
+.alert("Thông báo", isPresented: Binding(get: { _importNotice != nil }, set: { if !$0 { _importNotice = nil } })) {
+Button("OK", role: .cancel) {}
+} message: {
+Text(_importNotice ?? "")
+}
+.simultaneousGesture(DragGesture(minimumDistance: 35, coordinateSpace: .local).onEnded { value in if value.translation.width < -65 && abs(value.translation.height) < 55 { onExitSearch?() } })
 	}
+
+private func _loadSearchableFiles() {
+let fm = FileManager.default
+let docs = URL.documentsDirectory
+let subDirs = ["InputFile", "Archives", "Certificates", "Signed", "Unsigned"]
+var roots: [URL] = [docs]
+for name in subDirs {
+roots.append(docs.appendingPathComponent(name, isDirectory: true))
+}
+var collected: [URL] = []
+for root in roots {
+guard let items = try? fm.contentsOfDirectory(
+at: root,
+includingPropertiesForKeys: [.isDirectoryKey, .isHiddenKey],
+options: [.skipsHiddenFiles]
+) else { continue }
+for item in items {
+if item.lastPathComponent.hasPrefix(".") { continue }
+let isDir = (try? item.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
+if isDir {
+if item.pathExtension.lowercased() == "app" {
+collected.append(item)
+}
+} else {
+collected.append(item)
+}
+}
+}
+_allFiles = Array(Set(collected)).sorted {
+$0.lastPathComponent.localizedCaseInsensitiveCompare($1.lastPathComponent) == .orderedAscending
+}
+}
+
+private func _importFileToLibrary(_ url: URL) {
+do {
+let tempURL = FileManager.default.temporaryDirectory
+.appendingPathComponent("\(UUID().uuidString)_\(url.lastPathComponent)")
+if FileManager.default.fileExists(atPath: tempURL.path) {
+try FileManager.default.removeItem(at: tempURL)
+}
+try FileManager.default.copyItem(at: url, to: tempURL)
+let dl = DownloadManager.shared.startArchive(
+from: tempURL,
+id: "FeatherManualDownload_\(UUID().uuidString)"
+)
+try DownloadManager.shared.handlePachageFile(url: tempURL, dl: dl)
+_importNotice = "Đã thêm \"\(url.lastPathComponent)\" vào Thư viện."
+} catch {
+_importNotice = error.localizedDescription
+}
+}
 }
