@@ -88,6 +88,8 @@ struct XSignFolderBrowserView: View {
 	@State private var isShowingRenameAlert: Bool = false
 	@State private var errorMessage: String?
 	@State private var isShowingError: Bool = false
+	@State private var importSuccessMessage: String? = nil
+	@State private var isShowingImportSuccess: Bool = false
 	
 	private struct QuickLookItem: Identifiable {
 		let id = UUID()
@@ -121,6 +123,21 @@ struct XSignFolderBrowserView: View {
 							} label: {
 								_rowView(for: url, isDirectory: true)
 							}
+					} else if _isIPA(url) {
+						HStack {
+							Button {
+								quickLookItem = QuickLookItem(url: url)
+							} label: {
+								_rowView(for: url, isDirectory: false)
+							}
+							.tint(.primary)
+							Spacer()
+							Button("Thêm vào thư viện") {
+								_importIPAToLibrary(url)
+							}
+							.buttonStyle(.bordered)
+							.controlSize(.small)
+						}
 						} else {
 							Button {
 								quickLookItem = QuickLookItem(url: url)
@@ -138,6 +155,13 @@ struct XSignFolderBrowserView: View {
 						}
 					}
 					.contextMenu {
+					if !isDir && _isIPA(url) {
+						Button {
+							_importIPAToLibrary(url)
+						} label: {
+							Label("Thêm vào thư viện", systemImage: "plus.square.on.square")
+						}
+					}
 						Button {
 							itemToRename = url
 							renameText = url.lastPathComponent
@@ -231,6 +255,37 @@ struct XSignFolderBrowserView: View {
 			Button("OK", role: .cancel) {}
 		} message: {
 			Text(errorMessage ?? "Đã xảy ra lỗi")
+		}
+		.alert("Đã thêm vào Thư viện", isPresented: $isShowingImportSuccess) {
+			Button("OK", role: .cancel) {}
+		} message: {
+			Text(importSuccessMessage ?? "")
+		}
+	}
+
+	private func _isIPA(_ url: URL) -> Bool {
+		let ext = url.pathExtension.lowercased()
+		return ext == "ipa" || ext == "tipa"
+	}
+
+	private func _importIPAToLibrary(_ url: URL) {
+		do {
+			let tempURL = FileManager.default.temporaryDirectory
+				.appendingPathComponent("\(UUID().uuidString)_\(url.lastPathComponent)")
+			if FileManager.default.fileExists(atPath: tempURL.path) {
+				try FileManager.default.removeItem(at: tempURL)
+			}
+			try FileManager.default.copyItem(at: url, to: tempURL)
+			let dl = DownloadManager.shared.startArchive(
+				from: tempURL,
+				id: "FeatherManualDownload_\(UUID().uuidString)"
+			)
+			try DownloadManager.shared.handlePackageFile(url: tempURL, dl: dl)
+			importSuccessMessage = "Đã thêm \"\(url.lastPathComponent)\" vào Thư viện."
+			isShowingImportSuccess = true
+		} catch {
+			errorMessage = error.localizedDescription
+			isShowingError = true
 		}
 	}
 	
