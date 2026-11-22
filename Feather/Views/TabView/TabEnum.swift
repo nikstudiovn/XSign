@@ -90,6 +90,13 @@ struct XSignFolderBrowserView: View {
 	@State private var isShowingError: Bool = false
 	@State private var importSuccessMessage: String? = nil
 	@State private var isShowingImportSuccess: Bool = false
+@State private var isMultiSelecting: Bool = false
+@State private var selectedURLs: Set<URL> = []
+
+private var _allSelectedAreIPA: Bool {
+!selectedURLs.isEmpty && selectedURLs.allSatisfy { !_isDirectory($0) && _isIPA($0) }
+}
+	
 	
 	private struct QuickLookItem: Identifiable {
 		let id = UUID()
@@ -114,7 +121,22 @@ struct XSignFolderBrowserView: View {
 				ForEach(filteredItems, id: \.self) { url in
 					let isDir = _isDirectory(url)
 					Group {
-						if isDir {
+					if isMultiSelecting {
+Button {
+if selectedURLs.contains(url) {
+selectedURLs.remove(url)
+} else {
+selectedURLs.insert(url)
+}
+} label: {
+HStack(spacing: 12) {
+Image(systemName: selectedURLs.contains(url) ? "checkmark.circle.fill" : "circle")
+.foregroundStyle(selectedURLs.contains(url) ? Color.accentColor : Color.secondary)
+_rowView(for: url, isDirectory: isDir)
+}
+}
+.tint(.primary)
+} else 	if isDir {
 							NavigationLink {
 								XSignFolderBrowserView(
 									directory: url,
@@ -196,7 +218,13 @@ struct XSignFolderBrowserView: View {
 		.navigationTitle(title)
 		.toolbar {
 			ToolbarItem(placement: .topBarTrailing) {
-				Menu {
+				if isMultiSelecting {
+Button("Xong") {
+isMultiSelecting = false
+selectedURLs.removeAll()
+}
+} else {
+Menu {
 					Button {
 						newFolderName = ""
 						isShowingNewFolderAlert = true
@@ -215,11 +243,54 @@ struct XSignFolderBrowserView: View {
 					} label: {
 						Label("Làm mới", systemImage: "arrow.clockwise")
 					}
+Button {
+selectedURLs.removeAll()
+isMultiSelecting = true
+} label: {
+Label("Chọn nhiều", systemImage: "checkmark.circle")
+}
 				} label: {
 					Image(systemName: "ellipsis.circle")
 				}
+				}
 			}
 		}
+.safeAreaInset(edge: .bottom) {
+if isMultiSelecting {
+HStack(spacing: 12) {
+if _allSelectedAreIPA {
+Button {
+_importMultipleIPAs(Array(selectedURLs))
+} label: {
+Label("Nhập vào Thư viện (\(selectedURLs.count))", systemImage: "square.and.arrow.down.on.square")
+.font(.subheadline.weight(.semibold))
+}
+.buttonStyle(.borderedProminent)
+}
+Button {
+_zipSelectedItems()
+} label: {
+Label("Nén ZIP", systemImage: "doc.zipper")
+.font(.subheadline.weight(.medium))
+}
+.buttonStyle(.bordered)
+.disabled(selectedURLs.isEmpty)
+Button(role: .destructive) {
+_deleteSelectedItems()
+} label: {
+Label("Xóa", systemImage: "trash")
+.font(.subheadline.weight(.medium))
+}
+.buttonStyle(.bordered)
+.disabled(selectedURLs.isEmpty)
+}
+.padding(.horizontal, 16)
+.padding(.vertical, 12)
+.background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+.padding(.horizontal, 16)
+.padding(.bottom, 8)
+}
+}
 		.onAppear {
 			_loadItems()
 		}
@@ -289,6 +360,60 @@ struct XSignFolderBrowserView: View {
 			isShowingError = true
 		}
 	}
+
+private func _importMultipleIPAs(_ urls: [URL]) {
+do {
+for url in urls {
+let tempURL = FileManager.default.temporaryDirectory
+.appendingPathComponent("\(UUID().uuidString)_\(url.lastPathComponent)")
+if FileManager.default.fileExists(atPath: tempURL.path) {
+try FileManager.default.removeItem(at: tempURL)
+}
+try FileManager.default.copyItem(at: url, to: tempURL)
+let dl = DownloadManager.shared.startArchive(
+from: tempURL,
+id: "FeatherManualDownload_\(UUID().uuidString)"
+)
+try DownloadManager.shared.handlePachageFile(url: tempURL, dl: dl)
+}
+importSuccessMessage = "Đã thêm \(urls.count) tệp IPA vào Thư viện."
+isShowingImportSuccess = true
+isMultiSelecting = false
+selectedURLs.removeAll()
+} catch {
+errorMessage = error.localizedDescription
+isShowingError = true
+}
+}
+
+private func _zipSelectedItems() {
+guard !selectedURLs.isEmpty else { return }
+do {
+let zipURL = directory.appendingPathComponent("Archive_\(Int(Date().timeIntervalSince1970)).zip")
+try Zip.zipFiles(paths: Array(selectedURLs), zipFilePath: zipURL, password: nil, progress: nil)
+_loadItems()
+isMultiSelecting = false
+selectedURLs.removeAll()
+} catch {
+errorMessage = error.localizedDescription
+isShowingError = true
+}
+}
+
+private func _deleteSelectedItems() {
+guard !selectedURLs.isEmpty else { return }
+do {
+for url in selectedURLs {
+try FileManager.default.removeItem(at: url)
+}
+_loadItems()
+isMultiSelecting = false
+selectedURLs.removeAll()
+} catch {
+errorMessage = error.localizedDescription
+isShowingError = true
+}
+}
 	
 	@ViewBuilder
 	private func _rowView(for url: URL, isDirectory: Bool) -> some View {
