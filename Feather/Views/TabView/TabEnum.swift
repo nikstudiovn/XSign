@@ -190,7 +190,8 @@ struct XSignFolderBrowserView: View {
 					}
 				}
 			}
-		}
+		} .scrollContentBackground(.hidden)
+		.background { XSignAmbientBackground() }
 		.searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Tìm kiếm tệp hoặc thư mục")
 		.navigationTitle(title)
 		.toolbar {
