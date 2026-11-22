@@ -11,6 +11,6 @@ import SwiftUI
 @main
 struct XSignWidgetBundle: WidgetBundle {
 	var body: some Widget {
-		InstallLiveActivity()
+		XSignLiveActivityWidget()
 	}
 }
