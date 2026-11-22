@@ -17,9 +17,11 @@ struct SourcesView: View {
 	@State private var _isAddingPresenting = false
 	@State private var _addingSourceLoading = false
 	@State private var _searchText = ""
+	@AppStorage("XSign.didSeedDefaultRepo") private var _didSeedDefaultRepo = false
 	
 	private var _filteredSources: [AltSource] {
 		_sources.filter { _searchText.isEmpty || ($0.name?.localizedCaseInsensitiveContains(_searchText) ?? false) }
+	.sorted { ($0.identifier == "com.nikstudiovn.xsign.repo") != ($1.identifier == "com.nikstudiovn.xsign.repo") ? ($0.identifier == "com.nikstudiovn.xsign.repo") : (($0.name ?? "").localizedCaseInsensitiveCompare($1.name ?? "") == .orderedAscending) }	
 	}
 	
 	@FetchRequest(
@@ -71,6 +73,8 @@ struct SourcesView: View {
 					}
 				}
 			}
+			.scrollContentBackground(.hidden)
+			.background { XSignAmbientBackground() }
 			.searchable(text: $_searchText, placement: .platform())
 			.overlay {
 				if _filteredSources.isEmpty {
@@ -108,6 +112,15 @@ struct SourcesView: View {
 		}
 		.task(id: Array(_sources)) {
 			await viewModel.fetchSources(_sources)
+		}
+		.onAppear { _seedDefaultXSignSourceIfNeeded() }
+	}
+	private func _seedDefaultXSignSourceIfNeeded() {
+		if !_didSeedDefaultRepo {
+			_didSeedDefaultRepo = true
+			if !Storage.shared.sourceExists("com.nikstudiovn.xsign.repo"), let url = URL(string: "https://raw.githubusercontent.com/nikstudiovn/XSign/refs/heads/main/app-repo.json") {
+				Storage.shared.addSource(url, name: "XSign Repository", identifier: "com.nikstudiovn.xsign.repo", iconURL: URL(string: "https://raw.githubusercontent.com/nikstudiovn/XSign/main/Feather/Resources/Icons/Main/V1@3x.png")) { _ in }
+			}
 		}
 	}
 }
