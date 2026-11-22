@@ -22,7 +22,7 @@ enum TabEnum: String, CaseIterable, Hashable {
 		switch self {
 		case .sources:     	return .localized("Sources")
 		case .library: 		return .localized("Library")
-		case .files:		return "Thư mục"
+		case .files:		return xsignT("Thư mục", "Files")
 		case .settings: 	return .localized("Settings")
 		case .certificates:	return .localized("Certificates")
 		}
@@ -44,10 +44,10 @@ enum TabEnum: String, CaseIterable, Hashable {
 		case .sources: SourcesView()
 		case .library: LibraryView()
 		case .files:
-			NBNavigationView("Thư mục") {
+			NBNavigationView(xsignT("Thư mục", "Files")) {
 				XSignFolderBrowserView(
 					directory: URL.documentsDirectory,
-					title: "Thư mục",
+					title: xsignT("Thư mục", "Files"),
 					isRootTab: true
 				)
 			}
@@ -174,7 +174,7 @@ _rowView(for: url, isDirectory: isDir)
 							}
 							.tint(.primary)
 							Spacer()
-							Button("Thêm vào thư viện") {
+							Button(xsignT("Thêm vào thư viện", "Add to Library")) {
 								_importIPAToLibrary(url)
 							}
 							.buttonStyle(.bordered)
@@ -190,7 +190,7 @@ _rowView(for: url, isDirectory: false)
 }
 .tint(.primary)
 Spacer()
-Button("Nhập chứng chỉ") {
+Button(xsignT("Nhập chứng chỉ", "Import Certificate")) {
 _prepareCertificateImport(from: url)
 }
 .buttonStyle(.bordered)
@@ -209,7 +209,7 @@ Button {
 						Button(role: .destructive) {
 							_deleteItem(url)
 						} label: {
-							Label("Xóa", systemImage: "trash")
+							Label(xsignT("Xóa", "Delete"), systemImage: "trash")
 						}
 					}
 					.contextMenu {
@@ -217,14 +217,14 @@ if !isDir && _isCertificateImportable(url) {
 Button {
 _prepareCertificateImport(from: url)
 } label: {
-Label("Nhập chứng chỉ", systemImage: "checkmark.seal")
+Label(xsignT("Nhập chứng chỉ", "Import Certificate"), systemImage: "checkmark.seal")
 }
 }
 					if !isDir && _isIPA(url) {
 						Button {
 							_importIPAToLibrary(url)
 						} label: {
-							Label("Thêm vào thư viện", systemImage: "plus.app")
+							Label(xsignT("Thêm vào thư viện", "Add to Library"), systemImage: "plus.app")
 						}
 					}
 						Button {
@@ -232,25 +232,25 @@ Label("Nhập chứng chỉ", systemImage: "checkmark.seal")
 							renameText = url.lastPathComponent
 							isShowingRenameAlert = true
 						} label: {
-							Label("Đổi tên", systemImage: "pencil")
+							Label(xsignT("Đổi tên", "Rename"), systemImage: "pencil")
 						}
 						
 						if !isDir && url.pathExtension.lowercased() == "zip" {
 							Button {
 								_unzipItem(url)
 							} label: {
-								Label("Giải nén", systemImage: "archivebox.fill")
+								Label(xsignT("Giải nén", "Extract"), systemImage: "archivebox.fill")
 							}
 						}
 						
 						ShareLink(item: url) {
-							Label("Chia sẻ", systemImage: "square.and.arrow.up")
+							Label(xsignT("Chia sẻ", "Share"), systemImage: "square.and.arrow.up")
 						}
 						
 						Button(role: .destructive) {
 							_deleteItem(url)
 						} label: {
-							Label("Xóa", systemImage: "trash")
+							Label(xsignT("Xóa", "Delete"), systemImage: "trash")
 						}
 					}
 				}
@@ -260,7 +260,7 @@ private var _mainListView: some View {
 _listContent
  .scrollContentBackground(.hidden)
 		.background { XSignAmbientBackground() }
-		.searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Tìm kiếm tệp hoặc thư mục")
+		.searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: xsignT("Tìm kiếm tệp hoặc thư mục", "Search files or folders"))
 		.navigationTitle(title)
 		.toolbar {
 			ToolbarItem(placement: .topBarTrailing) {
@@ -275,25 +275,25 @@ Menu {
 						newFolderName = ""
 						isShowingNewFolderAlert = true
 					} label: {
-						Label("Tạo thư mục mới", systemImage: "folder.badge.plus")
+						Label(xsignT("Tạo thư mục mới", "New Folder"), systemImage: "folder.badge.plus")
 					}
 					
 					Button {
 						isShowingImporter = true
 					} label: {
-						Label("Nhập tệp", systemImage: "square.and.arrow.down")
+						Label(xsignT("Nhập tệp", "Import Files"), systemImage: "square.and.arrow.down")
 					}
 					
 					Button {
 						_loadItems()
 					} label: {
-						Label("Làm mới", systemImage: "arrow.clockwise")
+						Label(xsignT("Làm mới", "Refresh"), systemImage: "arrow.clockwise")
 					}
 Button {
 selectedURLs.removeAll()
 isMultiSelecting = true
 } label: {
-Label("Chọn nhiều", systemImage: "checkmark.circle")
+Label(xsignT("Chọn nhiều", "Select Multiple"), systemImage: "checkmark.circle")
 }
 				} label: {
 					Image(systemName: "ellipsis.circle")
@@ -324,7 +324,7 @@ Label("Nén ZIP", systemImage: "archivebox")
 Button(role: .destructive) {
 _deleteSelectedItems()
 } label: {
-Label("Xóa", systemImage: "trash")
+Label(xsignT("Xóa", "Delete"), systemImage: "trash")
 .font(.subheadline.weight(.medium))
 }
 .buttonStyle(.bordered)
@@ -365,14 +365,14 @@ content
 @ViewBuilder
 private func _applyFileAlerts<Content: View>(_ content: Content) -> some View {
 content
-		.alert("Tạo thư mục mới", isPresented: $isShowingNewFolderAlert) {
+		.alert(xsignT("Tạo thư mục mới", "New Folder"), isPresented: $isShowingNewFolderAlert) {
 			TextField("Tên thư mục", text: $newFolderName)
 			Button("Tạo") {
 				_createFolder()
 			}
 			Button("Hủy", role: .cancel) {}
 		}
-		.alert("Đổi tên", isPresented: $isShowingRenameAlert) {
+		.alert(xsignT("Đổi tên", "Rename"), isPresented: $isShowingRenameAlert) {
 			TextField("Tên mới", text: $renameText)
 			Button("Lưu") {
 				_renameItem()
@@ -394,7 +394,7 @@ content
 @ViewBuilder
 private func _applyCertAlerts<Content: View>(_ content: Content) -> some View {
 content
-.alert("Nhập chứng chỉ", isPresented: $_showCertPasswordAlert) {
+.alert(xsignT("Nhập chứng chỉ", "Import Certificate"), isPresented: $_showCertPasswordAlert) {
 TextField("Tên gợi nhớ (tùy chọn)", text: $_certNicknameInput)
 SecureField("Mật khẩu .p12", text: $_certPasswordInput)
 Button("Lưu") {
@@ -423,7 +423,7 @@ return ext == "ipa" || ext == "tipa"
 
 private func _isCertificateImportable(_ url: URL) -> Bool {
 let ext = url.pathExtension.lowercased()
-return ext == "p12" || ext == "mobileprovision" || ext == "zip"
+if ext == "p12" || ext == "mobileprovision" { return true }; if ext == "zip" { let name = url.lastPathComponent.lowercased(); return name.contains("certificate") || name.contains("cert") || name.contains("chứng chỉ") || name.contains("chungchi") }; return false
 }
 
 private func _prepareCertificateImport(from url: URL) {
@@ -451,14 +451,7 @@ let provCandidates = contents.filter { $0.pathExtension.lowercased() == "mobilep
 provURL = provCandidates.first(where: { $0.deletingPathExtension().lastPathComponent.lowercased() == baseName }) ?? provCandidates.first
 }
 
-guard let foundP12 = p12URL else {
-_certAlertMessage = "Không tìm thấy tệp .p12 đi kèm trong thư mục."
-return
-}
-guard let foundProv = provURL else {
-_certAlertMessage = "Không tìm thấy tệp .mobileprovision đi kèm trong thư mục."
-return
-}
+
 
 for item in contents where item.pathExtension.lowercased() == "txt" {
 if let pw = _readCertPasswordTxt(from: item) {
@@ -467,9 +460,7 @@ break
 }
 }
 
-_certPendingP12 = foundP12
-_certPendingProvision = foundProv
-_showCertPasswordAlert = true
+if let foundP12 = p12URL, let foundProv = provURL { _certPendingP12 = foundP12; _certPendingProvision = foundProv; _showCertPasswordAlert = true } else { _certPendingP12 = p12URL; _certPendingProvision = provURL; _missingPairNeedsProvision = (ext == "p12"); _isPickingMissingCertPair = true }
 } else if ext == "zip" {
 do {
 let tempDir = FileManager.default.temporaryDirectory
