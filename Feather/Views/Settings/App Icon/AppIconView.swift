@@ -34,6 +34,7 @@ extension AppIconView {
 // MARK: - View
 struct AppIconView: View {
 	@Binding var currentIcon: String?
+	@State private var _selectedIcon: String? = UIApplication.shared.alternateIconName
 	
 	// dont translate
 	var sections: [String: [AltIcon]] = [
@@ -64,7 +65,9 @@ struct AppIconView: View {
 			}
 		}
 		.onAppear {
-			currentIcon = UIApplication.shared.alternateIconName
+			let active = UIApplication.shared.alternateIconName
+			_selectedIcon = active
+			currentIcon = active
 		}
 	}
 }
@@ -76,8 +79,19 @@ extension AppIconView {
 		icon: AppIconView.AltIcon
 	) -> some View {
 		Button {
-			UIApplication.shared.setAlternateIconName(icon.key) { _ in
-				currentIcon = UIApplication.shared.alternateIconName
+			guard UIApplication.shared.supportsAlternateIcons else { return }
+			guard _selectedIcon != icon.key else { return }
+			let previous = _selectedIcon
+			// Move the checkmark immediately on the main thread
+			_selectedIcon = icon.key
+			currentIcon = icon.key
+			UIApplication.shared.setAlternateIconName(icon.key) { error in
+				// The completion handler is not guaranteed to run on the main thread
+				DispatchQueue.main.async {
+					let resolved = (error == nil) ? icon.key : previous
+					_selectedIcon = resolved
+					currentIcon = resolved
+				}
 			}
 		} label: {
 			HStack(spacing: 18) {
@@ -90,7 +104,7 @@ extension AppIconView {
 					linelimit: 0
 				)
 				
-				if currentIcon == icon.key {
+				if _selectedIcon == icon.key {
 					Image(systemName: "checkmark").bold()
 				}
 			}
