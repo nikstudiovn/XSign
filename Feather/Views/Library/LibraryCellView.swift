@@ -108,8 +108,8 @@ struct LibraryCellView: View {
 							Label("Ký & cài ngay", systemImage: "signature")
 						}
 					}
-					.confirmationDialog(app.name ?? .localized("Unknown"), isPresented: $_isAppActionsDialogPresented, titleVisibility: .visible) { _menuActions(for: app) }
 				}
+					.confirmationDialog(app.name ?? .localized("Unknown"), isPresented: $_isAppActionsDialogPresented, titleVisibility: .visible) { _menuActions(for: app) }
 			}
 		}
 		.swipeActions {
