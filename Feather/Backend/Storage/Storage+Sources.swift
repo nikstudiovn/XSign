@@ -26,15 +26,17 @@ extension Storage {
 		deferSave: Bool = false,
 		completion: @escaping (Error?) -> Void
 	) {
-		if sourceExists(identifier) {
-			completion(nil)
+		context.perform { [weak self] in
+						 guard let self else { DispatchQueue.main.async { completion(nil) }; return }
+						 if self.sourceExists(identifier) {
+			DispatchQueue.main.async { completion(nil) }
 			Logger.misc.debug("ignoring \(identifier)")
 			return
 		}
 		
 		let generator = UIImpactFeedbackGenerator(style: .light)
 		
-		let new = AltSource(context: context)
+		let new = AltSource(context: self.context)
 		new.name = name
 		new.date = Date()
 		new.identifier = identifier
@@ -43,13 +45,14 @@ extension Storage {
 		
 		do {
 			if !deferSave {
-				try context.save()
-				generator.impactOccurred()
+				try self.context.save()
+				DispatchQueue.main.async { generator.impactOccurred() }
 			}
-			completion(nil)
+			DispatchQueue.main.async { completion(nil) }
 		} catch {
-			completion(error)
+			DispatchQueue.main.async { completion(error) }
 		}
+						}
 	}
 	
 	func addSource(
@@ -90,14 +93,22 @@ extension Storage {
 			)
 		}
 		
-		saveContext()
-		generator.impactOccurred()
+		context.perform { [weak self] in
+						 guard let self else { DispatchQueue.main.async { completion(nil) }; return }
+						 self.saveContext()
+		DispatchQueue.main.async {
+								  generator.impactOccurred()
 		completion(nil)
+		}
+						}
 	}
 
 	func deleteSource(for source: AltSource) {
-		context.delete(source)
-		saveContext()
+		context.perform { [weak self] in
+						 guard let self else { return }
+						 self.context.delete(source)
+		self.saveContext()
+						}
 	}
 
 	func sourceExists(_ identifier: String) -> Bool {
