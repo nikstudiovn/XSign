@@ -18,9 +18,12 @@ struct FeatherApp: App {
 	
 	@StateObject var downloadManager = DownloadManager.shared
 	let storage = Storage.shared
+@State private var _showLaunchOverlay = true
+@Environment(\.accessibilityReduceMotion) private var _reduceMotion
 	
 	var body: some Scene {
 		WindowGroup {
+ZStack {
 			VStack {
 				DownloadHeaderView(downloadManager: downloadManager)
 					.transition(.move(edge: .top).combined(with: .opacity))
@@ -46,6 +49,15 @@ struct FeatherApp: App {
 				
 				UIApplication.topViewController()?.view.window?.tintColor = UIColor(Color(hex: UserDefaults.standard.string(forKey: "XSign.userTintColor") ?? "#848ef9"))
 			}
+.scaleEffect(_showLaunchOverlay && !_reduceMotion ? 0.97 : 1.0)
+.animation(.easeOut(duration: 0.42), value: _showLaunchOverlay)
+if _showLaunchOverlay {
+XSignLaunchOverlayView(reduceMotion: _reduceMotion) {
+_showLaunchOverlay = false
+}
+.zIndex(999)
+}
+}
 		}
 	}
 	
@@ -264,4 +276,154 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 		}
 	}
 
+}
+
+// MARK: - Launch Overlay
+private struct XSignLaunchOverlayView: View {
+	let reduceMotion: Bool
+let onFinished: () -> Void
+
+@State private var _iconScale: CGFloat = 0.72
+@State private var _iconOpacity: Double = 0
+@State private var _titleOpacity: Double = 0
+@State private var _titleOffset: CGFloat = 10
+@State private var _shimmerOffset: CGFloat = -160
+@State private var _isExiting = false
+@State private var _overlayOpacity: Double = 1
+@State private var _overlayScale: CGFloat = 1.0
+
+var body: some View {
+ZStack {
+LinearGradient(
+colors: [
+Color(red: 0.04, green: 0.05, blue: 0.10),
+Color(red: 0.07, green: 0.09, blue: 0.17),
+Color(red: 0.03, green: 0.04, blue: 0.08)
+],
+startPoint: .topLeading,
+endPoint: .bottomTrailing
+)
+.ignoresSafeArea()
+
+RadialGradient(
+colors: [
+Color.cyan.opacity(0.28),
+Color(red: 0.55, green: 0.35, blue: 0.95).opacity(0.20),
+Color.clear
+],
+center: .center,
+startRadius: 12,
+endRadius: 240
+)
+.blur(radius: 28)
+.ignoresSafeArea()
+
+VStack(spacing: 18) {
+_iconContainer
+.scaleEffect(reduceMotion ? 1.0 : _iconScale)
+.opacity(_iconOpacity)
+
+Text("XSign")
+.font(.system(size: 28, weight: .bold, design: .rounded))
+.tracking(1.6)
+.foregroundStyle(
+LinearGradient(
+colors: [
+.white,
+Color(red: 0.76, green: 0.94, blue: 1.0)
+],
+startPoint: .topLeading,
+endPoint: .bottomTrailing
+)
+)
+.opacity(_titleOpacity)
+.offset(y: reduceMotion ? 0 : _titleOffset)
+}
+}
+.scaleEffect(reduceMotion ? 1.0 : _overlayScale)
+.opacity(_overlayOpacity)
+.allowsHitTesting(false)
+.onAppear {
+_runAnimation()
+}
+}
+	
+@ViewBuilder
+private var _iconContainer: some View {
+let baseIcon = FRAppIconView(size: 104)
+.overlay {
+if !reduceMotion {
+LinearGradient(
+colors: [
+.clear,
+.white.opacity(0.35),
+.clear
+],
+startPoint: .topLeading,
+endPoint: .bottomTrailing
+)
+.frame(width: 56)
+.rotationEffect(.degrees(22))
+.offset(x: _shimmerOffset)
+.mask(RoundedRectangle(cornerRadius: 26, style: .continuous))
+}
+}
+.padding(6)
+
+if #available(iOS 26, *) {
+baseIcon
+.glassEffect(.regular, in: .rect(cornerRadius: 26))
+.shadow(color: Color.cyan.opacity(0.25), radius: 24, y: 10)
+} else {
+baseIcon
+.background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+.overlay(
+RoundedRectangle(cornerRadius: 26, style: .continuous)
+.strokeBorder(Color.white.opacity(0.22), lineWidth: 1)
+)
+.shadow(color: Color.cyan.opacity(0.25), radius: 24, y: 10)
+}
+}
+
+private func _runAnimation() {
+if reduceMotion {
+_iconOpacity = 1
+_titleOpacity = 1
+DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+withAnimation(.easeInOut(duration: 0.45)) {
+_overlayOpacity = 0
+}
+DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+onFinished()
+}
+}
+return
+}
+
+withAnimation(.spring(response: 0.52, dampingFraction: 0.78)) {
+_iconScale = 1.0
+_iconOpacity = 1.0
+}
+
+withAnimation(.easeOut(duration: 0.45).delay(0.14)) {
+_titleOpacity = 1.0
+_titleOffset = 0
+}
+
+withAnimation(.easeInOut(duration: 0.75).delay(0.22)) {
+_shimmerOffset = 160
+}
+
+DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+guard !_isExiting else { return }
+_isExiting = true
+withAnimation(.easeOut(duration: 0.35)) {
+_overlayScale = 1.12
+_overlayOpacity = 0
+}
+DispatchQueue.main.asyncAfter(deadline: .now() + 0.36) {
+onFinished()
+}
+}
+}
 }
