@@ -35,7 +35,7 @@ extension AppIconView {
 struct AppIconView: View {
 	@Binding var currentIcon: String?
 	@State private var _selectedIcon: String? = UIApplication.shared.alternateIconName
-	
+	@AppStorage("XSign.selectedAppIcon") private var _savedIconKey: String = ""
 	// dont translate
 	var sections: [String: [AltIcon]] = [
 		"Main": [
@@ -65,7 +65,7 @@ struct AppIconView: View {
 			}
 		}
 		.onAppear {
-			let active = UIApplication.shared.alternateIconName
+			let active = UIApplication.shared.alternateIconName ?? (_savedIconKey.isEmpty ? nil : _savedIconKey)
 			_selectedIcon = active
 			currentIcon = active
 		}
@@ -91,8 +91,9 @@ extension AppIconView {
 					let resolved = (error == nil) ? icon.key : previous
 					_selectedIcon = resolved
 					currentIcon = resolved
-				}
-			}
+					if error == nil { _savedIconKey = icon.key ?? "" }
+				}}
+			
 		} label: {
 			HStack(spacing: 18) {
 				Image(uiImage: icon.image)
