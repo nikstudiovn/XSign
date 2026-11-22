@@ -52,7 +52,7 @@ struct SettingsView: View {
 						Label(.localized("Appearance"), systemImage: "paintbrush")
 					}
 					NavigationLink(destination: AppIconView(currentIcon: $_currentIcon)) {
-						Label(.localized("App Icon"), systemImage: "app.badge")
+						Label(.localized("App Icon"), systemImage: "sparkles.square.filled.on.square")
 					}
 				}
                 
@@ -116,10 +116,10 @@ extension SettingsView {
 				}
 			}
             
-			Button(.localized("Submit Feedback"), systemImage: "safari") {
+			Button(.localized("Submit Feedback"), systemImage: "exclamationmark.bubble") {
 				UIApplication.open(URL(string: "\(_githubUrl)/issues")!)
 			}
-			Button(.localized("GitHub Repository"), systemImage: "safari") {
+			Button(.localized("GitHub Repository"), systemImage: "chevron.left.forwardslash.chevron.right") {
 				UIApplication.open(_githubUrl)
 			} 
 			Button("Kênh Telegram (@nikvn21)", systemImage: "paperplane.fill") {
@@ -156,7 +156,7 @@ Label("Mở thư mục XSign trong Tệp", systemImage: "folder.badge.gearshape"
 					title: .localized("Open Archives")
 				)
 			} label: {
-				Label(.localized("Open Archives"), systemImage: "folder")
+				Label(.localized("Open Archives"), systemImage: "archivebox")
 			}
 			NavigationLink {
 				XSignFolderBrowserView(
@@ -164,7 +164,7 @@ Label("Mở thư mục XSign trong Tệp", systemImage: "folder.badge.gearshape"
 					title: .localized("Open Certificates")
 				)
 			} label: {
-				Label(.localized("Open Certificates"), systemImage: "folder")
+				Label(.localized("Open Certificates"), systemImage: "checkmark.seal")
 			}
 		} footer: {
 			Text(.localized("All of the apps files are contained in the documents directory, here are some quick links to these."))
