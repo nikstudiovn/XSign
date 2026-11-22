@@ -212,6 +212,8 @@ struct LibraryView: View {
 				}
 				if _filteredSignedApps.isEmpty, _filteredImportedApps.isEmpty { if #available(iOS 17, *) { Section { ContentUnavailableView { Label(.localized("No Apps"), systemImage: "questionmark.app.fill") } description: { Text(.localized("Get started by importing your first IPA file.")) } actions: { Menu { _importActions() } label: { NBButton(.localized("Import"), style: .text) } } .frame(maxWidth: .infinity) .padding(.vertical, 24) .listRowBackground(Color.clear) .listRowSeparator(.hidden) } } }
 			}
+			.scrollContentBackground(.hidden)
+			.background { XSignAmbientBackground() }
 			.searchable(text: $_searchText, placement: .platform())
 			.compatSearchScopes($_selectedScope) {
 				ForEach(Scope.allCases, id: \.displayName) { scope in
