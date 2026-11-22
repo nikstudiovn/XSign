@@ -30,11 +30,11 @@ enum TabEnum: String, CaseIterable, Hashable {
 	
 	var icon: String {
 		switch self {
-		case .sources: 		return "globe.desk"
-		case .library: 		return "square.grid.2x2"
-		case .files:		return "folder"
-		case .settings: 	return "gearshape.2"
-		case .certificates: return "person.text.rectangle"
+		case .sources: 		return "square.stack.3d.up"
+		case .library: 		return "app.badge.checkmark"
+		case .files:		return "tray.full"
+		case .settings: 	return "slider.horizontal.3"
+		case .certificates: return "signature"
 		}
 	}
 	
