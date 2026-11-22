@@ -280,7 +280,7 @@ struct XSignFolderBrowserView: View {
 				from: tempURL,
 				id: "FeatherManualDownload_\(UUID().uuidString)"
 			)
-			try DownloadManager.shared.handlePackageFile(url: tempURL, dl: dl)
+			try DownloadManager.shared.handlePachageFile(url: tempURL, dl: dl)
 			importSuccessMessage = "Đã thêm \"\(url.lastPathComponent)\" vào Thư viện."
 			isShowingImportSuccess = true
 		} catch {
