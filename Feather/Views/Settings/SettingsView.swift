@@ -133,6 +133,15 @@ extension SettingsView {
 	@ViewBuilder
 	private func _directories() -> some View {
 		NBSection(.localized("Misc")) {
+Button {
+let path = URL.documentsDirectory.path
+if let encodedPath = path.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
+let filesURL = URL(string: "shareddocuments://\(encodedPath)") {
+UIApplication.shared.open(filesURL)
+}
+} label: {
+Label("Mở thư mục XSign trong Tệp", systemImage: "folder.badge.gearshape")
+}
 		NavigationLink {
 				XSignFolderBrowserView(
 					directory: URL.documentsDirectory,
