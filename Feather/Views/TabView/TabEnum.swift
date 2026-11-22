@@ -181,7 +181,7 @@ _rowView(for: url, isDirectory: isDir)
 						Button {
 							_importIPAToLibrary(url)
 						} label: {
-							Label("Thêm vào thư viện", systemImage: "plus.square.on.square")
+							Label("Thêm vào thư viện", systemImage: "plus.app")
 						}
 					}
 						Button {
@@ -196,7 +196,7 @@ _rowView(for: url, isDirectory: isDir)
 							Button {
 								_unzipItem(url)
 							} label: {
-								Label("Giải nén", systemImage: "doc.zipper")
+								Label("Giải nén", systemImage: "archivebox.fill")
 							}
 						}
 						
@@ -262,7 +262,7 @@ if _allSelectedAreIPA {
 Button {
 _importMultipleIPAs(Array(selectedURLs))
 } label: {
-Label("Nhập vào Thư viện (\(selectedURLs.count))", systemImage: "square.and.arrow.down.on.square")
+Label("Nhập vào Thư viện (\(selectedURLs.count))", systemImage: "plus.app")
 .font(.subheadline.weight(.semibold))
 }
 .buttonStyle(.borderedProminent)
@@ -270,7 +270,7 @@ Label("Nhập vào Thư viện (\(selectedURLs.count))", systemImage: "square.an
 Button {
 _zipSelectedItems()
 } label: {
-Label("Nén ZIP", systemImage: "doc.zipper")
+Label("Nén ZIP", systemImage: "archivebox")
 .font(.subheadline.weight(.medium))
 }
 .buttonStyle(.bordered)
@@ -443,10 +443,12 @@ isShowingError = true
 	
 	private func _iconName(for url: URL) -> String {
 		switch url.pathExtension.lowercased() {
-		case "zip", "ipa", "tipa":
+		case "ipa", "tipa":
+			return "shippingbox.fill"
+			case "zip":
 			return "doc.zipper"
 		case "p12", "mobileprovision", "cer", "pem":
-			return "doc.badge.gearshape"
+			return "checkmark.seal.fill"
 		case "png", "jpg", "jpeg", "heic":
 			return "photo"
 		case "txt", "json", "plist", "xml", "log":
