@@ -8,7 +8,7 @@
 
 import SwiftUI
 import NukeUI
-private enum ExtendedTabSelection: Hashable { case tab(TabEnum); case search }
+private enum ExtendedTabSelection: Hashable { case tab(TabEnum); case search; case allRepositories; case source(URL) }
 
 @available(iOS 18, *)
 struct ExtendedTabbarView: View {
@@ -50,14 +50,14 @@ struct ExtendedTabbarView: View {
 			}
 			
 			TabSection("Sources") {
-				Tab(.localized("All Repositories"), systemImage: "globe.desk") {
+				Tab(.localized("All Repositories"), systemImage: "globe.desk", value: ExtendedTabSelection.allRepositories) {
 					NavigationStack {
 						SourceAppsView(object: Array(_sources), viewModel: viewModel)
 					}
 				}
 				
 				ForEach(_sources, id: \.identifier) { source in
-					Tab {
+					Tab(value: ExtendedTabSelection.source(source.objectID.uriRepresentation())) {
 						NavigationStack {
 							SourceAppsView(object: [source], viewModel: viewModel)
 						}
