@@ -20,6 +20,7 @@ struct LibraryCellView: View {
 	@AppStorage("XSign.selectedCert") private var _selectedCertIndex: Int = 0
 	@State private var _isQuickSigning = false
 	@State private var _selectedAppCertURI: String? = nil
+	@State private var _isAppActionsDialogPresented = false
 
 	private var _perAppCertKey: String? {
 		guard let uuid = app.uuid else { return nil }
@@ -67,8 +68,8 @@ struct LibraryCellView: View {
 			} else {
 				// Nhấn 1 lần mở menu ngay; nhấn giữ cũng mở đúng menu này
 				// (không gắn thêm contextMenu để tránh xung đột gesture).
-				Menu {
-					_menuActions(for: app)
+				Button {
+					_isAppActionsDialogPresented = true
 				} label: {
 					_rowContent(isEditing: false)
 						.contentShape(Rectangle())
@@ -107,6 +108,7 @@ struct LibraryCellView: View {
 							Label("Ký & cài ngay", systemImage: "signature")
 						}
 					}
+					.confirmationDialog(app.name ?? .localized("Unknown"), isPresented: $_isAppActionsDialogPresented, titleVisibility: .visible) { _menuActions(for: app) }
 				}
 			}
 		}
@@ -158,14 +160,20 @@ struct LibraryCellView: View {
 					.foregroundColor(_isSelected ? .accentColor : .secondary)
 					.font(.title2)
 			}
+
 			
 			_appIcon(for: app)
+			VStack(alignment: .leading, spacing: 4) {
 			
 			NBTitleWithSubtitleView(
 				title: app.name ?? .localized("Unknown"),
 				subtitle: _desc,
 				linelimit: 0
 			)
+				if _selectedAppCertURI != nil, let customCert = _effectiveCertificate() {
+					HStack(spacing: 4) { Image(systemName: "checkmark.seal.fill"); Text(customCert.nickname ?? .localized("Certificate")) }.font(.caption2.weight(.medium)).foregroundStyle(.tint).padding(.horizontal, 6).padding(.vertical, 2).background(.tint.opacity(0.12), in: Capsule())
+				}
+			}
 			
 			Spacer(minLength: 0)
 			
