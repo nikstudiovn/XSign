@@ -19,6 +19,12 @@ struct LibraryCellView: View {
 	@FetchRequest(entity: CertificatePair.entity(), sortDescriptors: [NSSortDescriptor(keyPath: \CertificatePair.date, ascending: false)]) private var _certificates: FetchedResults<CertificatePair>
 	@AppStorage("XSign.selectedCert") private var _selectedCertIndex: Int = 0
 	@State private var _isQuickSigning = false
+	@State private var _selectedAppCertURI: String? = nil
+
+	private var _perAppCertKey: String? {
+		guard let uuid = app.uuid else { return nil }
+		return "XSign.appQuickCert.\(uuid)"
+	}
 
 	var certInfo: Date.ExpirationInfo? {
 		Storage.shared.getCertificate(from: app)?.expiration?.expirationInfo()
@@ -70,6 +76,38 @@ struct LibraryCellView: View {
 				.buttonStyle(.plain)
 				.foregroundStyle(.primary)
 				.disabled(_isQuickSigning)
+				.contextMenu {
+					Button {
+						_setAppCertificate(nil)
+					} label: {
+						if _selectedAppCertURI == nil {
+							Label("Mặc định (theo Cài đặt)", systemImage: "checkmark")
+						} else {
+							Text("Mặc định (theo Cài đặt)")
+						}
+					}
+					ForEach(_certificates, id: \.objectID) { cert in
+						let certURI = cert.objectID.uriRepresentation().absoluteString
+						Button {
+							_setAppCertificate(cert)
+						} label: {
+							let title = cert.nickname ?? "Chứng chỉ"
+							if _selectedAppCertURI == certURI {
+								Label(title, systemImage: "checkmark")
+							} else {
+								Text(title)
+							}
+						}
+					}
+					if let effectiveCert = _effectiveCertificate() {
+						Divider()
+						Button {
+							_quickSignAndInstall(app, certificate: effectiveCert)
+						} label: {
+							Label("Ký & cài ngay", systemImage: "signature")
+						}
+					}
+				}
 			}
 		}
 		.swipeActions {
@@ -94,6 +132,11 @@ struct LibraryCellView: View {
 		} message: {
 			if let update = _signedUpdateConfirmation {
 				Text(verbatim: "\(update.appName) \(update.remoteVersion)")
+			}
+		}
+		.onAppear {
+			if let key = _perAppCertKey {
+				_selectedAppCertURI = UserDefaults.standard.string(forKey: key)
 			}
 		}
 	}
@@ -203,9 +246,14 @@ extension LibraryCellView {
 		}
 		
 		Divider()
-		
-		Button("Ký & cài", systemImage: "bolt.badge.checkmark") {
-			_quickSignAndInstall(app, certificate: _defaultCertificate())
+				let quickCertTitle: String = {
+			if _selectedAppCertURI != nil, let name = _effectiveCertificate()?.nickname, !name.isEmpty {
+				return "Ký & cài (\(name))"
+			}
+			return "Ký & cài"
+		}()
+		Button(quickCertTitle, systemImage: "bolt.badge.checkmark") {
+			_quickSignAndInstall(app, certificate: _effectiveCertificate())
 		}
 		if _certificates.count > 1 {
 			Menu {
@@ -262,6 +310,26 @@ extension LibraryCellView {
 			return _certificates[_selectedCertIndex]
 		}
 		return _certificates.first
+	}
+
+	private func _effectiveCertificate() -> CertificatePair? {
+		if let uri = _selectedAppCertURI,
+		   let matched = _certificates.first(where: { $0.objectID.uriRepresentation().absoluteString == uri }) {
+			return matched
+		}
+		return _defaultCertificate()
+	}
+
+	private func _setAppCertificate(_ cert: CertificatePair?) {
+		let uri = cert?.objectID.uriRepresentation().absoluteString
+		_selectedAppCertURI = uri
+		if let key = _perAppCertKey {
+			if let uri {
+				UserDefaults.standard.set(uri, forKey: key)
+			} else {
+				UserDefaults.standard.removeObject(forKey: key)
+			}
+		}
 	}
 	
 	private func _quickSignAndInstall(_ app: AppInfoPresentable, certificate: CertificatePair?) {
