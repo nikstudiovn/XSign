@@ -120,12 +120,25 @@ private var _allSelectedAreIPA: Bool {
 	}
 	
 	var body: some View {
+_applyCertAlerts(_applyFileAlerts(_applySheets(_mainListView)))
+}
+
+@ViewBuilder
+private var _listContent: some View {
 		List {
 			if filteredItems.isEmpty {
 				Text(searchText.isEmpty ? "Thư mục trống" : "Không tìm thấy kết quả")
 					.foregroundStyle(.secondary)
 			} else {
 				ForEach(filteredItems, id: \.self) { url in
+_browserRow(for: url)
+}
+}
+}
+}
+
+@ViewBuilder
+private func _browserRow(for url: URL) -> some View {
 					let isDir = _isDirectory(url)
 					Group {
 					if isMultiSelecting {
@@ -241,8 +254,11 @@ Label("Nhập chứng chỉ", systemImage: "checkmark.seal")
 						}
 					}
 				}
-			}
-		} .scrollContentBackground(.hidden)
+		
+@ViewBuilder
+private var _mainListView: some View {
+_listContent
+ .scrollContentBackground(.hidden)
 		.background { XSignAmbientBackground() }
 		.searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Tìm kiếm tệp hoặc thư mục")
 		.navigationTitle(title)
@@ -327,6 +343,11 @@ Label("Xóa", systemImage: "trash")
 		.refreshable {
 			_loadItems()
 		}
+}
+
+@ViewBuilder
+private func _applySheets<Content: View>(_ content: Content) -> some View {
+content
 		.sheet(item: $quickLookItem) { item in
 			XSignQuickLookSheet(url: item.url)
 		}
@@ -339,6 +360,11 @@ Label("Xóa", systemImage: "trash")
 				}
 			)
 		}
+}
+
+@ViewBuilder
+private func _applyFileAlerts<Content: View>(_ content: Content) -> some View {
+content
 		.alert("Tạo thư mục mới", isPresented: $isShowingNewFolderAlert) {
 			TextField("Tên thư mục", text: $newFolderName)
 			Button("Tạo") {
@@ -363,6 +389,11 @@ Label("Xóa", systemImage: "trash")
 		} message: {
 			Text(importSuccessMessage ?? "")
 		}
+}
+
+@ViewBuilder
+private func _applyCertAlerts<Content: View>(_ content: Content) -> some View {
+content
 .alert("Nhập chứng chỉ", isPresented: $_showCertPasswordAlert) {
 TextField("Tên gợi nhớ (tùy chọn)", text: $_certNicknameInput)
 SecureField("Mật khẩu .p12", text: $_certPasswordInput)
