@@ -62,7 +62,7 @@ struct SettingsView: View {
 				} label: {
 					Label("Ngôn ngữ", systemImage: "globe")
 				}
-				.onChange(of: _appLanguage) { _, newValue in
+				.onChange(of: _appLanguage) { newValue in
 					if newValue == "system" {
 						UserDefaults.standard.removeObject(forKey: "AppleLanguages")
 					} else {
