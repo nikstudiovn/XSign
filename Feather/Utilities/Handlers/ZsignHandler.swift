@@ -32,7 +32,10 @@ final class ZsignHandler {
 		}
 		
 		let bundle = Bundle(url: _appUrl)
-		let execPath = _appUrl.appendingPathComponent(bundle?.exec ?? "").relativePath
+		guard let execName = bundle?.exec, !execName.isEmpty else { throw SigningFileHandlerError.corruptedMachO }
+		let execURL = _appUrl.appendingPathComponent(execName)
+		guard FileManager.default.fileExists(atPath: execURL.path) else { throw SigningFileHandlerError.corruptedMachO }
+		let execPath = execURL.relativePath
 		
 		if !Zsign.removeDylibs(appExecutable: execPath, using: _options.disInjectionFiles) {
 			throw SigningFileHandlerError.disinjectFailed
