@@ -1,19 +1,15 @@
-&lt;div align=&quot;center&quot;&gt;
+<div align="center">
 
-&lt;img src=&quot;docs/images/xsign_readme_hero_4k.png&quot; alt=&quot;XSign — On-Device iOS IPA Signer&quot; width=&quot;100%&quot; /&gt;
+<img src="../docs/images/xsign_readme_hero_4k.png" alt="XSign — On-Device iOS IPA Signer" width="100%" />
 
 # XSign
 
 **Công cụ ký và cài đặt tệp `.ipa` miễn phí, mã nguồn mở trực tiếp trên iPhone & iPad**
 
-[Release](https://www.google.com/search?q=https://github.com/nikstudiovn/XSign/releases/latest)
-[](https://github.com/nikstudiovn/XSign)
-[License](https://www.google.com/search?q=LICENSE)
-[Telegram](https://www.google.com/search?q=https://t.me/nikvn21)
 
-[Tải xuống .ipa](https://www.google.com/search?q=https://github.com/nikstudiovn/XSign/releases/latest) · [Nguồn AltStore](https://www.google.com/search?q=https%3A%2F%2Fwww.google.com%2Furl%3Fsa%3DE%26source%3Dgmail%26q%3Dhttps%3A%2F%2Fraw.githubusercontent.com%2Fnikstudiovn%2FXSign%2Frefs%2Fheads%2Fmain%2Fapp-repo.json) · [Báo lỗi \& Góp ý](https://www.google.com/search?q=https://github.com/nikstudiovn/XSign/issues) · [Telegram @nikvn21](https://www.google.com/search?q=https://t.me/nikvn21)
 
-&lt;/div&gt;
+
+</div>
 
 ---
 
@@ -46,14 +42,14 @@
 ## Giao diện thực tế
 
 ### Nguồn, Thư viện & Tìm kiếm toàn cục
-&lt;div align=&quot;center&quot;&gt;
-  &lt;img src=&quot;docs/images/xsign_readme_4screens_4k.png&quot; alt=&quot;XSign — Nguồn, Thư viện và Tìm kiếm toàn cục&quot; width=&quot;100%&quot; /&gt;
-&lt;/div&gt;
+<div align="center">
+  <img src="../docs/images/xsign_readme_4screens_4k.png" alt="XSign — Nguồn, Thư viện và Tìm kiếm toàn cục" width="100%" />
+</div>
 
 ### Quản lý thư mục, nhập IPA từ `InputFile`, Cài đặt & Dynamic Island
-&lt;div align=&quot;center&quot;&gt;
-  &lt;img src=&quot;docs/images/xsign_readme_files_settings_4k.png&quot; alt=&quot;XSign — Thư mục, InputFile, Cài đặt và Dynamic Island&quot; width=&quot;100%&quot; /&gt;
-&lt;/div&gt;
+<div align="center">
+  <img src="../docs/images/xsign_readme_files_settings_4k.png" alt="XSign — Thư mục, InputFile, Cài đặt và Dynamic Island" width="100%" />
+</div>
 
 ---
 
