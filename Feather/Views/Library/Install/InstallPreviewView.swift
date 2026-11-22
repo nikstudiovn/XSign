@@ -24,8 +24,6 @@ struct InstallPreviewView: View {
 	/// XSign: guards against opening the itms-services link more than once,
 	/// which showed the iOS install prompt twice.
 	@State private var _didOpenInstallLink = false
-	/// XSign: Lock Screen / Dynamic Island progress for this install.
-	@State private var _liveActivity = InstallActivityController()
 	
 	var app: AppInfoPresentable
 	@StateObject var viewModel: InstallerStatusViewModel
@@ -79,7 +77,6 @@ struct InstallPreviewView: View {
 			SafariRepresentableView(url: installer.pageEndpoint).ignoresSafeArea()
 		}
 		.onReceive(viewModel.$status) { newStatus in
-			_liveActivity.update(status: newStatus, progress: viewModel.overallProgress)
 			
 			if _installationMethod == 0 {
 				if case .ready = newStatus, !_didOpenInstallLink {
@@ -127,10 +124,6 @@ struct InstallPreviewView: View {
 				}
 			}
 		}
-		// XSign: progress-only updates; the controller throttles them.
-		.onChange(of: viewModel.overallProgress) { newProgress in
-			_liveActivity.update(progress: newProgress)
-		}
 		.onAppear(perform: _install)
 		
 		#if !targetEnvironment(macCatalyst)
@@ -142,7 +135,6 @@ struct InstallPreviewView: View {
 		.onDisappear {
 			progressTask?.cancel()
 			progressTask = nil
-			_liveActivity.sheetDidClose()
 			
 			#if !targetEnvironment(macCatalyst)
 			BackgroundAudioManager.shared.stop()
@@ -187,10 +179,6 @@ struct InstallPreviewView: View {
 				message: .localized("You cannot update ‘%@‘ with itself, please use an alternative tool to update it.", arguments: Bundle.main.name)
 			)
 			return
-		}
-		
-		if !isSharing {
-			_liveActivity.start(app: app)
 		}
 				
 		Task.detached {
@@ -241,7 +229,6 @@ struct InstallPreviewView: View {
 				await progressTask?.cancel()
 				
 				await MainActor.run {
-					_liveActivity.fail(error)
 					UIAlertController.showAlertWithOk(
 						title: .localized("Install"),
 						message: String(describing: error),
