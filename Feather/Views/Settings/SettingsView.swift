@@ -97,6 +97,8 @@ struct SettingsView: View {
 					Text(.localized("Reset the applications sources, certificates, apps, and general contents."))
 				}
 			}
+			.scrollContentBackground(.hidden)
+			.background { XSignAmbientBackground() }
 		}
 	}
 }
@@ -115,7 +117,7 @@ extension SettingsView {
 			}
             
 			Button(.localized("Submit Feedback"), systemImage: "safari") {
-				UIApplication.open(URL(string: "\(_githubUrl)/issues/new/choose")!)
+				UIApplication.open(URL(string: "\(_githubUrl)/issues")!)
 			}
 			Button(.localized("GitHub Repository"), systemImage: "safari") {
 				UIApplication.open(_githubUrl)
