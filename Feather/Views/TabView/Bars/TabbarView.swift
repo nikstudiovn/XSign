@@ -18,13 +18,13 @@ struct TabbarView: View {
 	
 	@Environment(\.horizontalSizeClass) private var horizontalSizeClass
 	@State private var selectedItem: SidebarItem? = .tab(.sources)
-	
-	var body: some View {
+	    @State private var _lastNonSearchTab: TabEnum = .sources
+	var body: some View { Group {
 		if horizontalSizeClass == .regular {
 			_splitView
 		} else {
 			_tabView
-		}
+		} } .onChange(of: selectedItem) { newValue in if case .tab(let t) = newValue { _lastNonSearchTab = t } }
 	}
 	
 	// MARK: Compact
@@ -42,8 +42,7 @@ struct TabbarView: View {
 			}
 			
 			NavigationStack {
-				GlobalSearchView()
-			}
+				GlobalSearchView(onExitSearch: { selectedItem = .tab(_lastNonSearchTab) })			}
 			.tabItem {
 				Label("Tìm kiếm", systemImage: "magnifyingglass")
 			}
@@ -76,7 +75,7 @@ struct TabbarView: View {
 				TabEnum.view(for: tab)
 			case .search:
 				NavigationStack {
-					GlobalSearchView()
+					GlobalSearchView(onExitSearch: { selectedItem = .tab(_lastNonSearchTab) })
 				}
 			}
 		}
