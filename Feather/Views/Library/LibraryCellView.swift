@@ -258,7 +258,7 @@ extension LibraryCellView {
 			if _selectedAppCertURI != nil, let name = _effectiveCertificate()?.nickname, !name.isEmpty {
 				return "Ký & cài (\(name))"
 			}
-			return "Ký & cài"
+			return xsignT("Ký & cài", "Sign & Install")
 		}()
 		Button(quickCertTitle, systemImage: "bolt.badge.checkmark") {
 			_quickSignAndInstall(app, certificate: _effectiveCertificate())
