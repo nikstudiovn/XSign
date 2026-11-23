@@ -81,19 +81,19 @@ struct LibraryView: View {
 	) private var _sources: FetchedResults<AltSource>
 		private var _certificateWarningInfo: (title: String, message: String, color: Color, icon: String)? {
 		guard !_libraryCertificates.isEmpty, _librarySelectedCertIndex >= 0, _librarySelectedCertIndex < _libraryCertificates.count else {
-			return ("Chưa có chứng chỉ mặc định", "Vui lòng thêm hoặc chọn chứng chỉ trong Cài đặt.", .orange, "exclamationmark.triangle.fill")
+			return (xsignT("Chưa có chứng chỉ mặc định", "No Default Certificate"), xsignT("Vui lòng thêm hoặc chọn chứng chỉ trong Cài đặt.", "Please add or select a certificate in Settings."), .orange, "exclamationmark.triangle.fill")
 		}
 		let cert = _libraryCertificates[_librarySelectedCertIndex]
 		if cert.revoked || _ocspCache.status(for: cert) == .revoked {
-			return ("Chứng chỉ đã bị thu hồi", "Chứng chỉ mặc định hiện tại đã bị thu hồi.", .red, "xmark.octagon.fill")
+			return (xsignT("Chứng chỉ đã bị thu hồi", "Certificate Revoked"), xsignT("Chứng chỉ mặc định hiện tại đã bị thu hồi.", "The current default certificate has been revoked."), .red, "xmark.octagon.fill")
 		}
 		if let expiration = cert.expiration {
 			if expiration <= Date() {
-				return ("Chứng chỉ đã hết hạn", "Chứng chỉ mặc định đã hết hạn.", .red, "exclamationmark.circle.fill")
+				return (xsignT("Chứng chỉ đã hết hạn", "Certificate Expired"), xsignT("Chứng chỉ mặc định đã hết hạn.", "The default certificate has expired."), .red, "exclamationmark.circle.fill")
 			}
 			let days = Calendar.current.dateComponents([.day], from: Date(), to: expiration).day ?? 0
 			if days <= 7 {
-				return ("Chứng chỉ sắp hết hạn", "Chứng chỉ mặc định còn \(days) ngày nữa sẽ hết hạn.", .orange, "exclamationmark.triangle.fill")
+				return (xsignT("Chứng chỉ sắp hết hạn", "Certificate Expiring Soon"), xsignT("Chứng chỉ mặc định còn \(days) ngày nữa sẽ hết hạn.", "The default certificate will expire in \(days) day(s)."), .orange, "exclamationmark.triangle.fill")
 			}
 		}
 		return nil
@@ -118,10 +118,10 @@ struct LibraryView: View {
 							}
 							Spacer()
 						}
-						.padding(.vertical, 4)
+						.padding(.vertical, 4).listRowBackground(XSignLiquidGlassRowBackground())
 					}
 				}
-				Section { Picker("", selection: $_selectedLibrarySegment) { Text("Đã nhập (\(_filteredImportedApps.count))").tag(0); Text("Đã ký (\(_filteredSignedApps.count))").tag(1) }.pickerStyle(.segmented) }
+				Section { Picker("", selection: $_selectedLibrarySegment) { Text("\(xsignT("Đã nhập", "Imported")) (\(_filteredImportedApps.count))").tag(0); Text("\(xsignT("Đã ký", "Signed")) (\(_filteredSignedApps.count))").tag(1) }.pickerStyle(.segmented).listRowBackground(XSignLiquidGlassRowBackground()) }
 								if _selectedLibrarySegment == 0 {
 					Section {
 						Menu {
@@ -155,7 +155,7 @@ struct LibraryView: View {
 								_newPresetName = ""
 								_isSavingPresetAlertPresented = true
 							} label: {
-								Label("Lưu cấu hình hiện tại làm Preset...", systemImage: "plus.circle")
+								Label(xsignT("Lưu cấu hình hiện tại làm Preset...", "Save current configuration as Preset..."), systemImage: "plus.circle")
 							}
 						} label: {
 							HStack {
@@ -168,7 +168,7 @@ struct LibraryView: View {
 						}
 					}
 								}
-				if _selectedLibrarySegment == 0 { if !_filteredImportedApps.isEmpty { Section { Button { _isBatchQueuePresenting = true } label: { Label("Chọn để ký hàng loạt", systemImage: "square.stack.3d.up") } } } }
+				if _selectedLibrarySegment == 0 { if !_filteredImportedApps.isEmpty { Section { Button { _isBatchQueuePresenting = true } label: { Label(xsignT("Chọn để ký hàng loạt", "Select for batch signing"), systemImage: "square.stack.3d.up") } } } }
 				if
 					!_filteredSignedApps.isEmpty,
 					_selectedLibrarySegment == 1
@@ -185,7 +185,7 @@ struct LibraryView: View {
 								selectedInstallAppPresenting: $_selectedInstallAppPresenting,
 								selectedAppUUIDs: $_selectedAppUUIDs
 							)
-							.compatMatchedTransitionSource(id: app.uuid ?? "", ns: _namespace)
+							.compatMatchedTransitionSource(id: app.uuid ?? "", ns: _namespace).listRowBackground(XSignLiquidGlassRowBackground())
 						}
 					}
 				}
@@ -206,14 +206,14 @@ struct LibraryView: View {
 								selectedInstallAppPresenting: $_selectedInstallAppPresenting,
 								selectedAppUUIDs: $_selectedAppUUIDs
 							)
-							.compatMatchedTransitionSource(id: app.uuid ?? "", ns: _namespace)
+							.compatMatchedTransitionSource(id: app.uuid ?? "", ns: _namespace).listRowBackground(XSignLiquidGlassRowBackground())
 						}
 					}
 				}
 				if _filteredSignedApps.isEmpty, _filteredImportedApps.isEmpty { if #available(iOS 17, *) { Section { ContentUnavailableView { Label(.localized("No Apps"), systemImage: "app.badge.checkmark") } description: { Text(.localized("Get started by importing your first IPA file.")) } actions: { Menu { _importActions() } label: { NBButton(.localized("Import"), style: .text) } } .frame(maxWidth: .infinity) .padding(.vertical, 24) .listRowBackground(Color.clear) .listRowSeparator(.hidden) } } }
 			}
 			.scrollContentBackground(.hidden)
-			.background { XSignAmbientBackground() }
+			.background(XSignLiquidGlassBackdrop())
 			.searchable(text: $_searchText, placement: .platform())
 			.compatSearchScopes($_selectedScope) {
 				ForEach(Scope.allCases, id: \.displayName) { scope in
@@ -265,7 +265,7 @@ struct LibraryView: View {
 						.disabled(updateManager.isChecking)
 						.accessibilityLabel(.localized("Check for Updates"))
 					}
-					ToolbarItem(placement: .topBarTrailing) { Button { _isBatchQueuePresenting = true } label: { Label("Ký hàng loạt", systemImage: "square.stack.3d.up") } }
+					ToolbarItem(placement: .topBarTrailing) { Button { _isBatchQueuePresenting = true } label: { Label(xsignT("Ký hàng loạt", "Batch Sign"), systemImage: "square.stack.3d.up") } }
 					
 					NBToolbarMenu(
 						systemImage: "plus",
@@ -331,8 +331,8 @@ _promptApp = latest
 _showQuickSignPrompt = true
 }
 }
-.alert("Ký & cài ngay?", isPresented: $_showQuickSignPrompt) {
-Button("Ký & cài ngay") {
+.alert(xsignT("Ký & cài ngay?", "Sign & install now?"), isPresented: $_showQuickSignPrompt) {
+Button(xsignT("Ký & cài ngay", "Sign & Install Now")) {
 guard let app = _promptApp else { return }
 let cert = (_quickSelectedCertIndex >= 0 && _quickSelectedCertIndex < _quickCertificates.count)
 ? _quickCertificates[_quickSelectedCertIndex]
@@ -347,12 +347,12 @@ UIAlertController.showAlertWithOk(title: "Lỗi", message: error.localizedDescri
 }
 }
 }
-Button("Tùy chỉnh ký") {
+Button(xsignT("Tùy chỉnh ký", "Customize Signing")) {
 if let app = _promptApp {
 _selectedSigningAppPresenting = AnyApp(base: app)
 }
 }
-Button("Để sau", role: .cancel) { }
+Button(xsignT("Để sau", "Later"), role: .cancel) { }
 } message: {
 Text("Bạn có muốn ký và cài đặt \(_promptApp?.name ?? "IPA") ngay không?")
 }
@@ -623,7 +623,7 @@ private struct XSignBatchQueueSheet: View {
 					}
 				}
 			}
-			.navigationTitle("Ký hàng loạt")
+			.navigationTitle(xsignT("Ký hàng loạt", "Batch Sign"))
 			.navigationBarTitleDisplayMode(.inline)
 			.toolbar {
 				ToolbarItem(placement: .topBarLeading) {
