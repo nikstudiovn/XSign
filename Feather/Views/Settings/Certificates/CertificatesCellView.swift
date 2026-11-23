@@ -213,7 +213,7 @@ struct CertificatesCellView: View {
 					.tint(statusColor)
 
 				HStack(spacing: 8) {
-					Text(isExpired ? xsignT("Đã hết hạn", "Expired") : "Còn \(daysRemaining) ngày")
+					Text(isExpired ? xsignT("Đã hết hạn", "Expired") : xsignT("Còn \(daysRemaining) ngày", "\(daysRemaining) days left"))
 						.font(.caption2)
 						.foregroundColor(.secondary)
 
