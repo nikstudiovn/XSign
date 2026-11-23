@@ -615,15 +615,44 @@ isShowingError = true
 
 private func _zipSelectedItems() {
 guard !selectedURLs.isEmpty else { return }
-do {
+let paths = Array(selectedURLs)
 let zipURL = directory.appendingPathComponent("Archive_\(Int(Date().timeIntervalSince1970)).zip")
-try Zip.zipFiles(paths: Array(selectedURLs), zipFilePath: zipURL, password: nil, progress: nil)
+// Live Activity (archiveTask) chỉ cho dữ liệu lớn hơn 5 MB.
+let totalSize = paths.reduce(Int64(0)) { $0 + XSignLiveActivityManager.sizeOfItem(at: $1) }
+let tracked = totalSize > XSignLiveActivityManager.archiveThreshold
+if tracked {
+XSignLiveActivityManager.shared.archiveStarted(
+fileName: zipURL.lastPathComponent,
+isExtracting: false,
+folderPath: XSignLiveActivityManager.relativeDocumentsPath(for: directory)
+)
+}
+DispatchQueue.global(qos: .userInitiated).async {
+let itemCount = paths.count
+do {
+try Zip.zipFiles(paths: paths, zipFilePath: zipURL, password: nil, progress: { value in
+if tracked {
+XSignLiveActivityManager.shared.archiveProgress(value, processed: Int(Double(itemCount) * value))
+}
+})
+Task { @MainActor in
+if tracked {
+XSignLiveActivityManager.shared.archiveFinished(success: true, processed: itemCount)
+}
 _loadItems()
 isMultiSelecting = false
 selectedURLs.removeAll()
+}
 } catch {
-errorMessage = error.localizedDescription
+let message = error.localizedDescription
+Task { @MainActor in
+if tracked {
+XSignLiveActivityManager.shared.archiveFinished(success: false, processed: 0)
+}
+errorMessage = message
 isShowingError = true
+}
+}
 }
 }
 
@@ -765,12 +794,50 @@ isShowingError = true
 	}
 	
 	private func _unzipItem(_ url: URL) {
-		do {
-			try Zip.unzipFile(url, destination: directory, overwrite: true, password: nil)
-			_loadItems()
-		} catch {
-			errorMessage = error.localizedDescription
-			isShowingError = true
+		let destination = directory
+		// Live Activity (archiveTask) chỉ cho tệp .zip / .ipa lớn hơn 5 MB.
+		let tracked = XSignLiveActivityManager.sizeOfItem(at: url) > XSignLiveActivityManager.archiveThreshold
+		if tracked {
+			XSignLiveActivityManager.shared.archiveStarted(
+				fileName: url.lastPathComponent,
+				isExtracting: true,
+				folderPath: XSignLiveActivityManager.relativeDocumentsPath(for: destination)
+			)
+		}
+		DispatchQueue.global(qos: .userInitiated).async {
+			var processed = 0
+			do {
+				try Zip.unzipFile(
+					url,
+					destination: destination,
+					overwrite: true,
+					password: nil,
+					progress: { value in
+						if tracked {
+							XSignLiveActivityManager.shared.archiveProgress(value, processed: processed)
+						}
+					},
+					fileOutputHandler: { _ in
+						processed += 1
+					}
+				)
+				let finalCount = processed
+				Task { @MainActor in
+					if tracked {
+						XSignLiveActivityManager.shared.archiveFinished(success: true, processed: finalCount)
+					}
+					_loadItems()
+				}
+			} catch {
+				let message = error.localizedDescription
+				Task { @MainActor in
+					if tracked {
+						XSignLiveActivityManager.shared.archiveFinished(success: false, processed: 0)
+					}
+					errorMessage = message
+					isShowingError = true
+				}
+			}
 		}
 	}
 	

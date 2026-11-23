@@ -71,6 +71,11 @@ _showLaunchOverlay = false
 	
 	private func _handleURL(_ url: URL) {
 		if let scheme = url.scheme?.lowercased(), ["xsign", "feather"].contains(scheme) {
+			/// Live Activity / Dynamic Island: install/<signedAppID>, reinstall/<id>, share/<id>,
+			/// certificates, files?path=, live-action/<command>. Xem XSignDeepLinkRouter.
+			if MainActor.assumeIsolated({ XSignDeepLinkRouter.handle(url) }) {
+				return
+			}
 			/// xsign://import-certificate?p12=<base64>&mobileprovision=<base64>&password=<base64>
 			if url.host == "import-certificate" {
 				guard
@@ -193,6 +198,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 		_createDocumentsDirectories()
 		ResetView.clearWorkCache()
 		_addDefaultCertificates()
+		XSignLiveActivityManager.shared.prepareOnLaunch()
 		return true
 	}
 	
