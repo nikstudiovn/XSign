@@ -22,6 +22,10 @@ struct FeatherApp: App {
 @Environment(\.accessibilityReduceMotion) private var _reduceMotion
 	@AppStorage("XSign.appLanguage") private var _appLanguage: String = "system"
 	
+	init() {
+		XSignLanguage.install()
+	}
+	
 	var body: some Scene {
 		WindowGroup {
 ZStack {
@@ -184,6 +188,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 		_ application: UIApplication,
 		didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
 	) -> Bool {
+		XSignLanguage.install()
 		_createPipeline()
 		_createDocumentsDirectories()
 		ResetView.clearWorkCache()
@@ -455,6 +460,59 @@ onFinished()
 }
 }
 }
+}
+
+// MARK: - Runtime language override
+/// `.localized(...)` / `NSLocalizedString` mặc định dùng ngôn ngữ mà iOS nạp cho
+/// Bundle.main lúc mở app, nên khi đổi ngôn ngữ trong XSign (Cài đặt hoặc màn chào
+/// mừng) các chuỗi này vẫn giữ ngôn ngữ cũ tới khi khởi động lại app.
+/// Lớp này chuyển việc tra chuỗi sang đúng .lproj theo "XSign.appLanguage".
+enum XSignLanguage {
+	private static let _lock = NSLock()
+	private static var _cache: (key: String, bundle: Bundle?)?
+	private static let _installOnce: Void = {
+		object_setClass(Bundle.main, XSignLocalizedBundle.self)
+	}()
+	
+	static func install() {
+		_ = _installOnce
+	}
+	
+	/// Bundle .lproj ứng với ngôn ngữ đang chọn (nil = dùng mặc định của hệ thống).
+	static var bundle: Bundle? {
+		let lang = UserDefaults.standard.string(forKey: "XSign.appLanguage") ?? "system"
+		let code: String?
+		if lang == "system" {
+			code = Bundle.preferredLocalizations(
+				from: Bundle.main.localizations,
+				forPreferences: Locale.preferredLanguages
+			).first
+		} else {
+			code = lang
+		}
+		guard let code else { return nil }
+		
+		_lock.lock()
+		defer { _lock.unlock() }
+		if let cache = _cache, cache.key == code {
+			return cache.bundle
+		}
+		var resolved: Bundle? = nil
+		if let path = Bundle.main.path(forResource: code, ofType: "lproj") {
+			resolved = Bundle(path: path)
+		}
+		_cache = (code, resolved)
+		return resolved
+	}
+}
+
+private final class XSignLocalizedBundle: Bundle {
+	override func localizedString(forKey key: String, value: String?, table tableName: String?) -> String {
+		if let bundle = XSignLanguage.bundle, bundle !== self {
+			return bundle.localizedString(forKey: key, value: value, table: tableName)
+		}
+		return super.localizedString(forKey: key, value: value, table: tableName)
+	}
 }
 
 func xsignT(_ vi: String, _ en: String) -> String {
