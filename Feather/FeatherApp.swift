@@ -512,7 +512,7 @@ enum XSignLanguage {
 	}
 }
 
-private final class XSignLocalizedBundle: Bundle {
+private final class XSignLocalizedBundle: Bundle, @unchecked Sendable {
 	override func localizedString(forKey key: String, value: String?, table tableName: String?) -> String {
 		if let bundle = XSignLanguage.bundle, bundle !== self {
 			return bundle.localizedString(forKey: key, value: value, table: tableName)
