@@ -118,7 +118,7 @@ struct SourcesAddView: View {
 if _isLoadingRecommended && _filteredRecommendedSourcesData.isEmpty {
 HStack {
 ProgressView()
-Text("Đang tải nguồn đề xuất...")
+Text(xsignT("Đang tải nguồn đề xuất...", "Loading recommended sources..."))
 }
 }
 	
@@ -148,14 +148,14 @@ iconUrl: nil
 Button {
 Storage.shared.addSource(
 url,
-name: url.host ?? "Nguồn",
+name: url.host ?? xsignT("Nguồn", "Source"),
 identifier: url.absoluteString
 ) { _ in
 _failedRecommendedURLs.removeAll { $0 == url }
 _refreshFilteredRecommendedSourcesData()
 }
 } label: {
-NBButton("Thêm", systemImage: "arrow.down", style: .text)
+NBButton(xsignT("Thêm", "Add"), systemImage: "arrow.down", style: .text)
 }
 }
 											  }
