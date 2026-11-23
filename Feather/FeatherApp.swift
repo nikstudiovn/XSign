@@ -35,6 +35,7 @@ ZStack {
 					.transition(.move(edge: .top).combined(with: .opacity))
 			}
 			.animation(.smooth, value: downloadManager.manualDownloads.description)
+			.modifier(XSignOnboardingPresenter())
 			.onReceive(NotificationCenter.default.publisher(for: .heartbeatInvalidHost)) { _ in
 				DispatchQueue.main.async {
 					UIAlertController.showAlertWithOk(
