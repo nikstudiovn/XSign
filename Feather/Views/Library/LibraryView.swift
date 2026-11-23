@@ -130,9 +130,9 @@ struct LibraryView: View {
 									_presetManager.selectDefault(preset.id)
 								} label: {
 									if _presetManager.activePreset.id == preset.id {
-										Label(preset.name, systemImage: "checkmark")
+										Label(preset.localizedName, systemImage: "checkmark")
 									} else {
-										Text(preset.name)
+										Text(preset.localizedName)
 									}
 								}
 							}
@@ -143,9 +143,9 @@ struct LibraryView: View {
 										_presetManager.selectDefault(preset.id)
 									} label: {
 										if _presetManager.activePreset.id == preset.id {
-											Label(preset.name, systemImage: "checkmark")
+											Label(preset.localizedName, systemImage: "checkmark")
 										} else {
-											Text(preset.name)
+											Text(preset.localizedName)
 										}
 									}
 								}
@@ -159,7 +159,7 @@ struct LibraryView: View {
 							}
 						} label: {
 							HStack {
-								Label("Preset: \(_presetManager.activePreset.name)", systemImage: "slider.horizontal.3")
+								Label("Preset: \(_presetManager.activePreset.localizedName)", systemImage: "slider.horizontal.3")
 								Spacer()
 								Image(systemName: "chevron.up.chevron.down")
 									.font(.caption)
