@@ -158,7 +158,7 @@ let filesURL = URL(string: "shareddocuments://\(encodedPath)") {
 UIApplication.shared.open(filesURL)
 }
 } label: {
-Label("Mở thư mục XSign trong Tệp", systemImage: "folder.badge.gearshape")
+Label(xsignT("Mở thư mục XSign trong Tệp", "Open XSign Folder in Files"), systemImage: "folder.badge.gearshape")
 }
 		NavigationLink {
 				XSignFolderBrowserView(
