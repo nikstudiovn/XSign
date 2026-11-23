@@ -56,6 +56,7 @@ struct SourcesView: View {
 							)
 						}
 						.buttonStyle(.plain)
+.listRowBackground(XSignLiquidGlassRowBackground())
 					}
 					
 					NBSection(
@@ -69,12 +70,13 @@ struct SourcesView: View {
 								SourcesCellView(source: source)
 							}
 							.buttonStyle(.plain)
+.listRowBackground(XSignLiquidGlassRowBackground())
 						}
 					}
 				}
 			}
 			.scrollContentBackground(.hidden)
-			.background { XSignAmbientBackground() }
+			.background(XSignLiquidGlassBackdrop())
 			.searchable(text: $_searchText, placement: .platform())
 			.overlay {
 				if _filteredSources.isEmpty {
