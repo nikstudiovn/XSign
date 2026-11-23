@@ -271,7 +271,7 @@ _listContent
 		.toolbar {
 			ToolbarItem(placement: .topBarTrailing) {
 				if isMultiSelecting {
-Button("Xong") {
+Button(xsignT("Xong", "Done")) {
 isMultiSelecting = false
 selectedURLs.removeAll()
 }
@@ -314,7 +314,7 @@ if _allSelectedAreIPA {
 Button {
 _importMultipleIPAs(Array(selectedURLs))
 } label: {
-Label("Nhập vào Thư viện (\(selectedURLs.count))", systemImage: "plus.app")
+Label("\(xsignT("Nhập vào Thư viện", "Import to Library")) (\(selectedURLs.count))", systemImage: "plus.app")
 .font(.subheadline.weight(.semibold))
 }
 .buttonStyle(.borderedProminent)
@@ -322,7 +322,7 @@ Label("Nhập vào Thư viện (\(selectedURLs.count))", systemImage: "plus.app"
 Button {
 _zipSelectedItems()
 } label: {
-Label("Nén ZIP", systemImage: "archivebox")
+Label(xsignT("Nén ZIP", "Compress ZIP"), systemImage: "archivebox")
 .font(.subheadline.weight(.medium))
 }
 .buttonStyle(.bordered)
@@ -376,17 +376,17 @@ private func _applyFileAlerts<Content: View>(_ content: Content) -> some View {
 content
 		.alert(xsignT("Tạo thư mục mới", "New Folder"), isPresented: $isShowingNewFolderAlert) {
 			TextField("Tên thư mục", text: $newFolderName)
-			Button("Tạo") {
+			Button(xsignT("Tạo", "Create")) {
 				_createFolder()
 			}
-			Button("Hủy", role: .cancel) {}
+			Button(xsignT("Hủy", "Cancel"), role: .cancel) {}
 		}
 		.alert(xsignT("Đổi tên", "Rename"), isPresented: $isShowingRenameAlert) {
 			TextField("Tên mới", text: $renameText)
-			Button("Lưu") {
+			Button(xsignT("Lưu", "Save")) {
 				_renameItem()
 			}
-			Button("Hủy", role: .cancel) {}
+			Button(xsignT("Hủy", "Cancel"), role: .cancel) {}
 		}
 		.alert("Lỗi", isPresented: $isShowingError) {
 			Button("OK", role: .cancel) {}
@@ -406,10 +406,10 @@ content
 .alert(xsignT("Nhập chứng chỉ", "Import Certificate"), isPresented: $_showCertPasswordAlert) {
 TextField("Tên gợi nhớ (tùy chọn)", text: $_certNicknameInput)
 SecureField("Mật khẩu .p12", text: $_certPasswordInput)
-Button("Lưu") {
+Button(xsignT("Lưu", "Save")) {
 _confirmCertificateImport()
 }
-Button("Hủy", role: .cancel) {
+Button(xsignT("Hủy", "Cancel"), role: .cancel) {
 _cleanupCertTempDir()
 }
 } message: {
@@ -696,7 +696,7 @@ isShowingError = true
 		
 		if isDirectory {
 			let count = (try? FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]).count) ?? 0
-			return dateText.isEmpty ? "\(count) mục" : "\(count) mục • \(dateText)"
+			return dateText.isEmpty ? "\(count) \(xsignT("mục", "items"))" : "\(count) \(xsignT("mục", "items")) • \(dateText)"
 		} else {
 			let size = Int64(values?.fileSize ?? 0)
 			let sizeText = ByteCountFormatter.string(fromByteCount: size, countStyle: .file)
