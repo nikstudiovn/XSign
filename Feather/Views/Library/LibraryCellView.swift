@@ -92,7 +92,7 @@ struct LibraryCellView: View {
 						Button {
 							_setAppCertificate(cert)
 						} label: {
-							let title = cert.nickname ?? "Chứng chỉ"
+							let title = cert.nickname ?? xsignT("Chứng chỉ", "Certificate")
 							if _selectedAppCertURI == certURI {
 								Label(title, systemImage: "checkmark")
 							} else {

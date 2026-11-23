@@ -38,7 +38,7 @@ struct CertificatesAddView: View {
                     Button {
                         _isImportingZipPresenting = true
                     } label: {
-                        Label("Nhập nhanh từ tệp .zip", systemImage: "doc.zipper")
+                        Label(xsignT("Nhập nhanh từ tệp .zip", "Quick Import from .zip"), systemImage: "doc.zipper")
 					}
 					_importButton(.localized("Import Certificate File"), file: _p12URL) {
 						_isImportingP12Presenting = true
@@ -275,28 +275,28 @@ extension CertificatesAddView {
                 var missing: [String] = []
                 if foundP12 == nil { missing.append(".p12") }
                 if foundProvision == nil { missing.append(".mobileprovision") }
-                let message = "Không tìm thấy tệp \(missing.joined(separator: " và ")) trong tệp .zip."
+                let message = xsignT("Không tìm thấy tệp \(missing.joined(separator: " và ")) trong tệp .zip.", "Could not find \(missing.joined(separator: " and ")) in the .zip file.")
                 _zipStatusMessage = message
                 UIAlertController.showAlertWithOk(
-                    title: "Thiếu tệp chứng chỉ",
+                    title: xsignT("Thiếu tệp chứng chỉ", "Missing Certificate Files"),
                     message: message
                 )
             } else {
                 var parts: [String] = [
-                    "Đã nạp: \(foundP12!.lastPathComponent)",
+                    xsignT("Đã nạp: \(foundP12!.lastPathComponent)", "Loaded: \(foundP12!.lastPathComponent)"),
                     foundProvision!.lastPathComponent
                 ]
                 if detectedPassword != nil {
-                    parts.append("đã tự điền mật khẩu")
+                    parts.append(xsignT("đã tự điền mật khẩu", "password auto-filled"))
                 }
                 _zipStatusMessage = parts.joined(separator: ", ")
             }
         } catch {
             try? fileManager.removeItem(at: extractDir)
-            let message = "Không thể giải nén tệp .zip: \(error.localizedDescription)"
+            let message = xsignT("Không thể giải nén tệp .zip: \(error.localizedDescription)", "Could not extract the .zip file: \(error.localizedDescription)")
             _zipStatusMessage = message
             UIAlertController.showAlertWithOk(
-                title: "Lỗi giải nén",
+                title: xsignT("Lỗi giải nén", "Extraction Error"),
                 message: message
             )
         }

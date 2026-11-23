@@ -44,7 +44,7 @@ struct TabbarView: View {
 			NavigationStack {
 				GlobalSearchView(onExitSearch: { selectedItem = .tab(_lastNonSearchTab) })			}
 			.tabItem {
-				Label("Tìm kiếm", systemImage: "magnifyingglass")
+				Label(xsignT("Tìm kiếm", "Search"), systemImage: "magnifyingglass")
 			}
 			.tag(SidebarItem.search)
 		}
@@ -56,7 +56,7 @@ struct TabbarView: View {
 			List(selection: $selectedItem) {
 				Section {
 					NavigationLink(value: SidebarItem.search) {
-						Label("Tìm kiếm", systemImage: "magnifyingglass")
+						Label(xsignT("Tìm kiếm", "Search"), systemImage: "magnifyingglass")
 					}
 				}
 				

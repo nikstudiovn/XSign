@@ -129,7 +129,7 @@ _applyCertAlerts(_applyFileAlerts(_applySheets(_mainListView)))
 private var _listContent: some View {
 		List {
 			if filteredItems.isEmpty {
-				Text(searchText.isEmpty ? "Thư mục trống" : "Không tìm thấy kết quả")
+				Text(searchText.isEmpty ? xsignT("Thư mục trống", "Empty Folder") : xsignT("Không tìm thấy kết quả", "No Results Found"))
 					.foregroundStyle(.secondary)
 .listRowBackground(XSignLiquidGlassRowBackground())
 			} else {
@@ -375,25 +375,25 @@ content
 private func _applyFileAlerts<Content: View>(_ content: Content) -> some View {
 content
 		.alert(xsignT("Tạo thư mục mới", "New Folder"), isPresented: $isShowingNewFolderAlert) {
-			TextField("Tên thư mục", text: $newFolderName)
+			TextField(xsignT("Tên thư mục", "Folder name"), text: $newFolderName)
 			Button(xsignT("Tạo", "Create")) {
 				_createFolder()
 			}
 			Button(xsignT("Hủy", "Cancel"), role: .cancel) {}
 		}
 		.alert(xsignT("Đổi tên", "Rename"), isPresented: $isShowingRenameAlert) {
-			TextField("Tên mới", text: $renameText)
+			TextField(xsignT("Tên mới", "New name"), text: $renameText)
 			Button(xsignT("Lưu", "Save")) {
 				_renameItem()
 			}
 			Button(xsignT("Hủy", "Cancel"), role: .cancel) {}
 		}
-		.alert("Lỗi", isPresented: $isShowingError) {
+		.alert(xsignT("Lỗi", "Error"), isPresented: $isShowingError) {
 			Button("OK", role: .cancel) {}
 		} message: {
-			Text(errorMessage ?? "Đã xảy ra lỗi")
+			Text(errorMessage ?? xsignT("Đã xảy ra lỗi", "An error occurred"))
 		}
-		.alert("Đã thêm vào Thư viện", isPresented: $isShowingImportSuccess) {
+		.alert(xsignT("Đã thêm vào Thư viện", "Added to Library"), isPresented: $isShowingImportSuccess) {
 			Button("OK", role: .cancel) {}
 		} message: {
 			Text(importSuccessMessage ?? "")
@@ -404,8 +404,8 @@ content
 private func _applyCertAlerts<Content: View>(_ content: Content) -> some View {
 content
 .alert(xsignT("Nhập chứng chỉ", "Import Certificate"), isPresented: $_showCertPasswordAlert) {
-TextField("Tên gợi nhớ (tùy chọn)", text: $_certNicknameInput)
-SecureField("Mật khẩu .p12", text: $_certPasswordInput)
+TextField(xsignT("Tên gợi nhớ (tùy chọn)", "Nickname (optional)"), text: $_certNicknameInput)
+SecureField(xsignT("Mật khẩu .p12", ".p12 Password"), text: $_certPasswordInput)
 Button(xsignT("Lưu", "Save")) {
 _confirmCertificateImport()
 }
@@ -413,9 +413,9 @@ Button(xsignT("Hủy", "Cancel"), role: .cancel) {
 _cleanupCertTempDir()
 }
 } message: {
-Text("Nhập tên gợi nhớ và mật khẩu cho chứng chỉ.")
+Text(xsignT("Nhập tên gợi nhớ và mật khẩu cho chứng chỉ.", "Enter a nickname and password for the certificate."))
 }
-.alert("Thông báo chứng chỉ", isPresented: Binding(
+.alert(xsignT("Thông báo chứng chỉ", "Certificate Notice"), isPresented: Binding(
 get: { _certAlertMessage != nil },
 set: { if !$0 { _certAlertMessage = nil } }
 )) {
@@ -506,7 +506,7 @@ foundPassword = _readCertPasswordTxt(from: fileURL)
 
 guard let p12 = foundP12, let prov = foundProv else {
 _cleanupCertTempDir()
-_certAlertMessage = "Tệp ZIP không chứa đủ cả .p12 và .mobileprovision."
+_certAlertMessage = xsignT("Tệp ZIP không chứa đủ cả .p12 và .mobileprovision.", "The ZIP file does not contain both a .p12 and a .mobileprovision.")
 return
 }
 
@@ -518,7 +518,7 @@ _certPasswordInput = pw
 _showCertPasswordAlert = true
 } catch {
 _cleanupCertTempDir()
-_certAlertMessage = "Không thể giải nén tệp ZIP: \(error.localizedDescription)"
+_certAlertMessage = xsignT("Không thể giải nén tệp ZIP: \(error.localizedDescription)", "Could not extract the ZIP file: \(error.localizedDescription)")
 }
 }
 }
@@ -542,7 +542,7 @@ return
 }
 guard FR.checkPasswordForCertificate(for: p12, with: _certPasswordInput, using: prov) else {
 _cleanupCertTempDir()
-_certAlertMessage = "Mật khẩu .p12 không đúng hoặc chứng chỉ không hợp lệ."
+_certAlertMessage = xsignT("Mật khẩu .p12 không đúng hoặc chứng chỉ không hợp lệ.", "Incorrect .p12 password or invalid certificate.")
 return
 }
 FR.handleCertificateFiles(
@@ -553,7 +553,7 @@ certificateName: _certNicknameInput
 ) { _ in
 DispatchQueue.main.async {
 _cleanupCertTempDir()
-_certAlertMessage = "Đã nhập chứng chỉ thành công."
+_certAlertMessage = xsignT("Đã nhập chứng chỉ thành công.", "Certificate imported successfully.")
 }
 }
 }
@@ -580,7 +580,7 @@ _certPendingProvision = nil
 				id: "FeatherManualDownload_\(UUID().uuidString)"
 			)
 			try DownloadManager.shared.handlePachageFile(url: tempURL, dl: dl)
-			importSuccessMessage = "Đã thêm \"\(url.lastPathComponent)\" vào Thư viện."
+			importSuccessMessage = xsignT("Đã thêm \"\(url.lastPathComponent)\" vào Thư viện.", "Added \"\(url.lastPathComponent)\" to Library.")
 			isShowingImportSuccess = true
 		} catch {
 			errorMessage = error.localizedDescription
@@ -603,7 +603,7 @@ id: "FeatherManualDownload_\(UUID().uuidString)"
 )
 try DownloadManager.shared.handlePachageFile(url: tempURL, dl: dl)
 }
-importSuccessMessage = "Đã thêm \(urls.count) tệp IPA vào Thư viện."
+importSuccessMessage = xsignT("Đã thêm \(urls.count) tệp IPA vào Thư viện.", "Added \(urls.count) IPA file(s) to Library.")
 isShowingImportSuccess = true
 isMultiSelecting = false
 selectedURLs.removeAll()
@@ -809,7 +809,7 @@ struct XSignQuickLookSheet: View {
 				.navigationBarTitleDisplayMode(.inline)
 				.toolbar {
 					ToolbarItem(placement: .topBarTrailing) {
-						Button("Đóng") {
+						Button(xsignT("Đóng", "Close")) {
 							dismiss()
 						}
 					}

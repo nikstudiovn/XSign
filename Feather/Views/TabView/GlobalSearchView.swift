@@ -151,14 +151,14 @@ $0.lastPathComponent.localizedCaseInsensitiveContains(_query)
 		
 		List {
 			if _query.isEmpty {
-				Text("Nhập tên ứng dụng, bundle ID hoặc mục cài đặt để tìm kiếm.")
+				Text(xsignT("Nhập tên ứng dụng, bundle ID hoặc mục cài đặt để tìm kiếm.", "Type an app name, bundle ID, or setting to search."))
 					.foregroundStyle(.secondary)
 			} else if library.isEmpty && sources.isEmpty && settings.isEmpty  && _fileHits.isEmpty{
-				Text("Không tìm thấy kết quả")
+				Text(xsignT("Không tìm thấy kết quả", "No Results Found"))
 					.foregroundStyle(.secondary)
 			} else {
 				if !library.isEmpty {
-					Section("Thư viện") {
+					Section(xsignT("Thư viện", "Library")) {
 						ForEach(library) { app in
 							Button {
 								_selectedInfoApp = app
@@ -178,7 +178,7 @@ $0.lastPathComponent.localizedCaseInsensitiveContains(_query)
 				}
 				
 				if !sources.isEmpty {
-					Section("Nguồn") {
+					Section(xsignT("Nguồn", "Sources")) {
 						ForEach(sources) { hit in
 							NavigationLink {
 								SourceAppsDetailView(
@@ -197,7 +197,7 @@ $0.lastPathComponent.localizedCaseInsensitiveContains(_query)
 					}
 				}
 if !_fileHits.isEmpty {
-Section("Tệp") {
+Section(xsignT("Tệp", "Files")) {
 ForEach(_fileHits, id: \.self) { url in
 let ext = url.pathExtension.lowercased()
 HStack(spacing: 12) {
@@ -221,7 +221,7 @@ Text(url.deletingLastPathComponent().lastPathComponent)
 .buttonStyle(.plain)
 
 if ext == "ipa" || ext == "tipa" {
-Button("Thêm") {
+Button(xsignT("Thêm", "Add")) {
 _importFileToLibrary(url)
 }
 .buttonStyle(.bordered)
@@ -233,7 +233,7 @@ _importFileToLibrary(url)
 }
 				
 				if !settings.isEmpty {
-					Section("Cài đặt") {
+					Section(xsignT("Cài đặt", "Settings")) {
 						ForEach(settings) { item in
 							NavigationLink {
 								SettingsSearchDestinationView(destination: item.destination)
@@ -245,8 +245,8 @@ _importFileToLibrary(url)
 				}
 			}
 		}
-		.navigationTitle("Tìm kiếm")
-		.searchable(text: $_searchText, prompt: "Thư viện, Nguồn,Tệp,  Cài đặt")
+		.navigationTitle(xsignT("Tìm kiếm", "Search"))
+		.searchable(text: $_searchText, prompt: xsignT("Thư viện, Nguồn, Tệp, Cài đặt", "Library, Sources, Files, Settings"))
 		.autocorrectionDisabled()
 		.textInputAutocapitalization(.never)
 		.task {
@@ -257,7 +257,7 @@ _loadSearchableFiles()
 			LibraryInfoView(app: app.base)
 		}
 .quickLookPreview($_quickLookURL)
-.alert("Thông báo", isPresented: Binding(get: { _importNotice != nil }, set: { if !$0 { _importNotice = nil } })) {
+.alert(xsignT("Thông báo", "Notice"), isPresented: Binding(get: { _importNotice != nil }, set: { if !$0 { _importNotice = nil } })) {
 Button("OK", role: .cancel) {}
 } message: {
 Text(_importNotice ?? "")
@@ -310,7 +310,7 @@ from: tempURL,
 id: "FeatherManualDownload_\(UUID().uuidString)"
 )
 try DownloadManager.shared.handlePachageFile(url: tempURL, dl: dl)
-_importNotice = "Đã thêm \"\(url.lastPathComponent)\" vào Thư viện."
+_importNotice = xsignT("Đã thêm \"\(url.lastPathComponent)\" vào Thư viện.", "Added \"\(url.lastPathComponent)\" to Library.")
 } catch {
 _importNotice = error.localizedDescription
 }

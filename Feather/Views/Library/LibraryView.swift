@@ -221,17 +221,17 @@ struct LibraryView: View {
 				}
 			}
 			.scrollDismissesKeyboard(.interactively)
-			.alert("Lưu Preset ký", isPresented: $_isSavingPresetAlertPresented) {
-				TextField("Tên preset", text: $_newPresetName)
-				Button("Lưu") {
+			.alert(xsignT("Lưu Preset ký", "Save Signing Preset"), isPresented: $_isSavingPresetAlertPresented) {
+				TextField(xsignT("Tên preset", "Preset name"), text: $_newPresetName)
+				Button(xsignT("Lưu", "Save")) {
 					let trimmed = _newPresetName.trimmingCharacters(in: .whitespacesAndNewlines)
 					if !trimmed.isEmpty {
 						_presetManager.saveCustomPreset(name: trimmed, options: OptionsManager.shared.options)
 					}
 				}
-				Button("Hủy", role: .cancel) {}
+				Button(xsignT("Hủy", "Cancel"), role: .cancel) {}
 			} message: {
-				Text("Lưu cấu hình tùy chọn ký hiện tại thành một preset mới.")
+				Text(xsignT("Lưu cấu hình tùy chọn ký hiện tại thành một preset mới.", "Save the current signing options as a new preset."))
 			}
 			.toolbar {
 				ToolbarItem(placement: .topBarLeading) {
@@ -338,12 +338,12 @@ let cert = (_quickSelectedCertIndex >= 0 && _quickSelectedCertIndex < _quickCert
 ? _quickCertificates[_quickSelectedCertIndex]
 : _quickCertificates.first
 guard let cert else {
-UIAlertController.showAlertWithOk(title: "Thiếu chứng chỉ", message: "Vui lòng thêm chứng chỉ trong Cài đặt trước khi ký.")
+UIAlertController.showAlertWithOk(title: xsignT("Thiếu chứng chỉ", "Missing Certificate"), message: xsignT("Vui lòng thêm chứng chỉ trong Cài đặt trước khi ký.", "Please add a certificate in Settings before signing."))
 return
 }
 XSignQuickSigner.signAndInstall(app, certificate: cert) { error in
 if let error {
-UIAlertController.showAlertWithOk(title: "Lỗi", message: error.localizedDescription)
+UIAlertController.showAlertWithOk(title: xsignT("Lỗi", "Error"), message: error.localizedDescription)
 }
 }
 }
@@ -354,7 +354,7 @@ _selectedSigningAppPresenting = AnyApp(base: app)
 }
 Button(xsignT("Để sau", "Later"), role: .cancel) { }
 } message: {
-Text("Bạn có muốn ký và cài đặt \(_promptApp?.name ?? "IPA") ngay không?")
+Text(xsignT("Bạn có muốn ký và cài đặt \(_promptApp?.name ?? "IPA") ngay không?", "Do you want to sign and install \(_promptApp?.name ?? "IPA") now?"))
 }
 			.onChange(of: _editMode) { mode in
 				if mode == .inactive {
@@ -510,14 +510,14 @@ private struct XSignBatchQueueSheet: View {
 	}
 
 	private func _certName(for cert: CertificatePair?) -> String {
-		guard let cert else { return "Chưa có chứng chỉ" }
+		guard let cert else { return xsignT("Chưa có chứng chỉ", "No certificate") }
 		return cert.nickname ?? Storage.shared.getProvisionFileDecoded(for: cert)?.Name ?? .localized("Unknown")
 	}
 
 	private func _statusColor(for status: String) -> Color {
-		if status == "Thành công" { return .green }
-		if status.hasPrefix("Lỗi") { return .red }
-		if status == "Đang ký..." { return .accentColor }
+		if status == xsignT("Thành công", "Success") { return .green }
+		if status.hasPrefix(xsignT("Lỗi", "Error")) { return .red }
+		if status == xsignT("Đang ký...", "Signing...") { return .accentColor }
 		return .secondary
 	}
 
@@ -527,7 +527,7 @@ private struct XSignBatchQueueSheet: View {
 				if _isRunning || _completedCount > 0 {
 					VStack(alignment: .leading, spacing: 6) {
 						HStack {
-							Text(_isRunning ? "Đang ký hàng loạt..." : "Hoàn tất hàng đợi")
+							Text(_isRunning ? xsignT("Đang ký hàng loạt...", "Batch signing...") : xsignT("Hoàn tất hàng đợi", "Queue completed"))
 								.font(.subheadline.weight(.semibold))
 							Spacer()
 							Text("\(_completedCount)/\(_selectedApps.count)")
@@ -545,14 +545,14 @@ private struct XSignBatchQueueSheet: View {
 
 				List {
 					if apps.isEmpty {
-						Text("Chưa có IPA nào được nhập.")
+						Text(xsignT("Chưa có IPA nào được nhập.", "No IPA files imported yet."))
 							.foregroundStyle(.secondary)
 					} else {
 						ForEach(apps, id: \.objectID) { app in
 							let id = app.objectID
 							let isSelected = _selectedIds.contains(id)
 							let currentCert = _selectedCerts[id] ?? certificates.first
-							let status = _statuses[id] ?? (isSelected ? "Đang chờ" : "")
+							let status = _statuses[id] ?? (isSelected ? xsignT("Đang chờ", "Waiting") : "")
 
 							VStack(alignment: .leading, spacing: 8) {
 								HStack(spacing: 12) {
@@ -592,7 +592,7 @@ private struct XSignBatchQueueSheet: View {
 
 								if isSelected && !certificates.isEmpty {
 									HStack {
-										Text("Chứng chỉ:")
+										Text(xsignT("Chứng chỉ:", "Certificate:"))
 											.font(.caption)
 											.foregroundStyle(.secondary)
 										Spacer()
@@ -627,13 +627,13 @@ private struct XSignBatchQueueSheet: View {
 			.navigationBarTitleDisplayMode(.inline)
 			.toolbar {
 				ToolbarItem(placement: .topBarLeading) {
-					Button("Đóng") {
+					Button(xsignT("Đóng", "Close")) {
 						dismiss()
 					}
 					.disabled(_isRunning)
 				}
 				ToolbarItem(placement: .topBarTrailing) {
-					Button("Bắt đầu ký hàng loạt") {
+					Button(xsignT("Bắt đầu ký hàng loạt", "Start Batch Signing")) {
 						_startBatchSigning()
 					}
 					.disabled(_isRunning || _selectedApps.isEmpty || certificates.isEmpty)
@@ -657,7 +657,7 @@ private struct XSignBatchQueueSheet: View {
 		_isRunning = true
 		_completedCount = 0
 		for app in targets {
-			_statuses[app.objectID] = "Đang chờ"
+			_statuses[app.objectID] = xsignT("Đang chờ", "Waiting")
 		}
 
 		Task {
@@ -665,7 +665,7 @@ private struct XSignBatchQueueSheet: View {
 				let id = app.objectID
 				let cert = _selectedCerts[id] ?? certificates.first
 				await MainActor.run {
-					_statuses[id] = "Đang ký..."
+					_statuses[id] = xsignT("Đang ký...", "Signing...")
 				}
 
 				let errorMessage: String? = await withCheckedContinuation { continuation in
@@ -681,9 +681,9 @@ private struct XSignBatchQueueSheet: View {
 
 				await MainActor.run {
 					if let errorMessage {
-						_statuses[id] = "Lỗi: \(errorMessage)"
+						_statuses[id] = xsignT("Lỗi: \(errorMessage)", "Error: \(errorMessage)")
 					} else {
-						_statuses[id] = "Thành công"
+						_statuses[id] = xsignT("Thành công", "Success")
 					}
 					_completedCount += 1
 				}
