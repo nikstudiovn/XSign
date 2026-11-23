@@ -14,6 +14,7 @@ private enum ExtendedTabSelection: Hashable { case tab(TabEnum); case search; ca
 struct ExtendedTabbarView: View {
 	@Environment(\.horizontalSizeClass) var horizontalSizeClass
 	@AppStorage("XSign.tabCustomization") var customization = TabViewCustomization()
+	@AppStorage("XSign.appLanguage") private var _appLanguage: String = "system"
 	@StateObject var viewModel = SourcesViewModel.shared
 	
 	@State private var _isAddingPresenting = false
@@ -35,7 +36,7 @@ struct ExtendedTabbarView: View {
 				}
 			}
 			
-			Tab("Tìm kiếm", systemImage: "magnifyingglass", value: ExtendedTabSelection.search, role: .search) {
+			Tab(xsignT("Tìm kiếm",, "Search"), systemImage: "magnifyingglass", value: ExtendedTabSelection.search, role: .search) {
 				NavigationStack {
 					GlobalSearchView(onExitSearch: { _selectedTab = .tab(_lastNonSearchTab) })
 				}
