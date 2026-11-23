@@ -1,6 +1,6 @@
 //
 //  UIApplication+open.swift
-//  Feather
+//  XSign
 //
 //  Created by samara on 21.04.2025.
 //

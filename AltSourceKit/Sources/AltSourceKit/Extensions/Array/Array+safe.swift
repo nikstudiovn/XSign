@@ -1,6 +1,6 @@
 //
 //  Array+safe.swift
-//  Feather
+//  XSign
 //
 //  Created by Lakhan Lothiyi on 19/04/2025.
 //

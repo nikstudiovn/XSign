@@ -1,15 +1,15 @@
 {
   "name": "XSign Repository",
   "identifier": "com.nikstudiovn.xsign.repo",
-  "iconURL": "https://raw.githubusercontent.com/nikstudiovn/XSign/main/Feather/Resources/Icons/Main/V1@3x.png",
+  "iconURL": "https://raw.githubusercontent.com/nikstudiovn/XSign/main/XSign/Resources/Icons/Main/V1@3x.png",
   "website": "https://github.com/nikstudiovn/XSign",
   "apps": [
     {
       "name": "XSign",
       "bundleIdentifier": "com.nikstudiovn.xsign",
       "developerName": "nikstudiovn",
-      "iconURL": "https://raw.githubusercontent.com/nikstudiovn/XSign/main/Feather/Resources/Icons/Main/V1@3x.png",
-      "localizedDescription": "XSign is a free on-device iOS app signer and installer for developer certificates. Based on Feather (GPL-3.0).",
+      "iconURL": "https://raw.githubusercontent.com/nikstudiovn/XSign/main/XSign/Resources/Icons/Main/V1@3x.png",
+      "localizedDescription": "XSign is a free on-device iOS app signer and installer for developer certificates. Based on XSign (GPL-3.0).",
       "subtitle": "On-device signing application",
       "tintColor": "848ef9",
       "versions": [
@@ -32,7 +32,7 @@
     {
       "title": "About XSign",
       "identifier": "xsign-about",
-      "caption": "XSign lets you use an Apple Developer certificate to sign and install apps directly on your device, without a computer. XSign is based on Feather by Samara (claration) and is licensed under GPL-3.0.",
+      "caption": "XSign lets you use an Apple Developer certificate to sign and install apps directly on your device, without a computer. XSign is based on XSign by Samara (claration) and is licensed under GPL-3.0.",
       "tintColor": "848ef9",
       "url": "https://github.com/nikstudiovn/XSign",
       "date": "2026-11-20",

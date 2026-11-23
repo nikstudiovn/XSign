@@ -1,5 +1,5 @@
 NAME := XSign
-SCHEME := Feather
+SCHEME := XSign
 PLATFORMS := iphoneos
 
 TMP := $(TMPDIR)/$(NAME)
@@ -42,7 +42,7 @@ $(PLATFORMS): deps
 		DEST="generic/platform=macOS,variant=Mac Catalyst"; \
 	fi; \
 	xcodebuild \
-		-project Feather.xcodeproj \
+		-project XSign.xcodeproj \
 		-scheme $(SCHEME) \
 		-configuration Release \
 		-destination "$$DEST" \

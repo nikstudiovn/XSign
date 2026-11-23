@@ -1,6 +1,6 @@
 //
 //  UIImage+url.swift
-//  Feather
+//  XSign
 //
 //  Created by samara on 18.04.2025.
 //

@@ -1,0 +1,745 @@
+//
+//  ContentView.swift
+//  XSign
+//
+//  Created by samara on 10.04.2025.
+//
+
+import SwiftUI
+import CoreData
+import NimbleViews
+
+// MARK: - View
+struct LibraryView: View {
+	@StateObject var downloadManager = DownloadManager.shared
+	@StateObject var updateManager = UpdateManager.shared
+		@ObservedObject private var _presetManager = XSignPresetManager.shared
+	@ObservedObject private var _ocspCache = XSignOCSPCache.shared
+@FetchRequest(entity: CertificatePair.entity(), sortDescriptors: [NSSortDescriptor(keyPath: \CertificatePair.date, ascending: false)]) private var _libraryCertificates: FetchedResults<CertificatePair>
+@AppStorage("XSign.selectedCert") private var _librarySelectedCertIndex: Int = 0
+@State private var _isSavingPresetAlertPresented = false
+@State private var _newPresetName = ""
+	
+	@State private var _selectedInfoAppPresenting: AnyApp?
+	@State private var _selectedSigningAppPresenting: AnyApp?
+	@State private var _selectedInstallAppPresenting: AnyApp?
+	@State private var _isBatchQueuePresenting = false
+	@State private var _isImportingPresenting = false
+	@State private var _isDownloadingPresenting = false
+	@State private var _alertDownloadString: String = "" // for _isDownloadingPresenting
+	@State private var _updateCheckRotation = 0.0
+	@State private var _isUpdateCheckCompleteVisible = false
+@FetchRequest(entity: CertificatePair.entity(), sortDescriptors: [NSSortDescriptor(keyPath: \CertificatePair.date, ascending: false)]) private var _quickCertificates: FetchedResults<CertificatePair>
+@AppStorage("XSign.selectedCert") private var _quickSelectedCertIndex: Int = 0
+@State private var _showQuickSignPrompt = false
+@State private var _promptApp: Imported? = nil
+	
+	// MARK: Selection State
+	@State private var _selectedAppUUIDs: Set<String> = []
+	@State private var _editMode: EditMode = .inactive
+	
+	@State private var _searchText = ""
+	@State private var _selectedScope: Scope = .all
+		@State private var _selectedLibrarySegment: Int = 0
+	
+	
+	@Namespace private var _namespace
+	
+	// horror
+	private func filteredAndSortedApps<T>(from apps: FetchedResults<T>) -> [T] where T: NSManagedObject {
+		apps.filter {
+			_searchText.isEmpty ||
+				(($0.value(forKey: "name") as? String)?.localizedCaseInsensitiveContains(_searchText) ?? false)
+		}
+	}
+	
+	private var _filteredSignedApps: [Signed] {
+		filteredAndSortedApps(from: _signedApps)
+	}
+	
+	private var _filteredImportedApps: [Imported] {
+		filteredAndSortedApps(from: _importedApps)
+	}
+	
+	// MARK: Fetch
+	@FetchRequest(
+		entity: Signed.entity(),
+		sortDescriptors: [NSSortDescriptor(keyPath: \Signed.date, ascending: false)],
+		animation: .snappy
+	) private var _signedApps: FetchedResults<Signed>
+	
+	@FetchRequest(
+		entity: Imported.entity(),
+		sortDescriptors: [NSSortDescriptor(keyPath: \Imported.date, ascending: false)],
+		animation: .snappy
+	) private var _importedApps: FetchedResults<Imported>
+	
+	@FetchRequest(
+		entity: AltSource.entity(),
+		sortDescriptors: [NSSortDescriptor(keyPath: \AltSource.name, ascending: true)],
+		animation: .snappy
+	) private var _sources: FetchedResults<AltSource>
+		private var _certificateWarningInfo: (title: String, message: String, color: Color, icon: String)? {
+		guard !_libraryCertificates.isEmpty, _librarySelectedCertIndex >= 0, _librarySelectedCertIndex < _libraryCertificates.count else {
+			return (xsignT("Chưa có chứng chỉ mặc định", "No Default Certificate"), xsignT("Vui lòng thêm hoặc chọn chứng chỉ trong Cài đặt.", "Please add or select a certificate in Settings."), .orange, "exclamationmark.triangle.fill")
+		}
+		let cert = _libraryCertificates[_librarySelectedCertIndex]
+		if cert.revoked || _ocspCache.status(for: cert) == .revoked {
+			return (xsignT("Chứng chỉ đã bị thu hồi", "Certificate Revoked"), xsignT("Chứng chỉ mặc định hiện tại đã bị thu hồi.", "The current default certificate has been revoked."), .red, "xmark.octagon.fill")
+		}
+		if let expiration = cert.expiration {
+			if expiration <= Date() {
+				return (xsignT("Chứng chỉ đã hết hạn", "Certificate Expired"), xsignT("Chứng chỉ mặc định đã hết hạn.", "The default certificate has expired."), .red, "exclamationmark.circle.fill")
+			}
+			let days = Calendar.current.dateComponents([.day], from: Date(), to: expiration).day ?? 0
+			if days <= 7 {
+				return (xsignT("Chứng chỉ sắp hết hạn", "Certificate Expiring Soon"), xsignT("Chứng chỉ mặc định còn \(days) ngày nữa sẽ hết hạn.", "The default certificate will expire in \(days) day(s)."), .orange, "exclamationmark.triangle.fill")
+			}
+		}
+		return nil
+		}
+	
+	// MARK: Body
+	var body: some View {
+		NBNavigationView(.localized("Library")) {
+			NBListAdaptable { 
+				if let warning = _certificateWarningInfo {
+					Section {
+						HStack(spacing: 12) {
+							Image(systemName: warning.icon)
+								.font(.title3)
+								.foregroundStyle(warning.color)
+							VStack(alignment: .leading, spacing: 2) {
+								Text(warning.title)
+									.font(.subheadline.weight(.semibold))
+								Text(warning.message)
+									.font(.caption)
+									.foregroundStyle(.secondary)
+							}
+							Spacer()
+						}
+						.padding(.vertical, 4).listRowBackground(XSignLiquidGlassRowBackground())
+					}
+				}
+				Section { Picker("", selection: $_selectedLibrarySegment) { Text("\(xsignT("Đã nhập", "Imported")) (\(_filteredImportedApps.count))").tag(0); Text("\(xsignT("Đã ký", "Signed")) (\(_filteredSignedApps.count))").tag(1) }.pickerStyle(.segmented).listRowBackground(XSignLiquidGlassRowBackground()) }
+								if _selectedLibrarySegment == 0 {
+					Section {
+						Menu {
+							ForEach(_presetManager.builtInPresets) { preset in
+								Button {
+									_presetManager.selectDefault(preset.id)
+								} label: {
+									if _presetManager.activePreset.id == preset.id {
+										Label(preset.localizedName, systemImage: "checkmark")
+									} else {
+										Text(preset.localizedName)
+									}
+								}
+							}
+							if !_presetManager.customPresets.isEmpty {
+								Divider()
+								ForEach(_presetManager.customPresets) { preset in
+									Button {
+										_presetManager.selectDefault(preset.id)
+									} label: {
+										if _presetManager.activePreset.id == preset.id {
+											Label(preset.localizedName, systemImage: "checkmark")
+										} else {
+											Text(preset.localizedName)
+										}
+									}
+								}
+							}
+							Divider()
+							Button {
+								_newPresetName = ""
+								_isSavingPresetAlertPresented = true
+							} label: {
+								Label(xsignT("Lưu cấu hình hiện tại làm Preset...", "Save current configuration as Preset..."), systemImage: "plus.circle")
+							}
+						} label: {
+							HStack {
+								Label("Preset: \(_presetManager.activePreset.localizedName)", systemImage: "slider.horizontal.3")
+								Spacer()
+								Image(systemName: "chevron.up.chevron.down")
+									.font(.caption)
+									.foregroundStyle(.secondary)
+							}
+						}
+					}
+								}
+				if _selectedLibrarySegment == 0 { if !_filteredImportedApps.isEmpty { Section { Button { _isBatchQueuePresenting = true } label: { Label(xsignT("Chọn để ký hàng loạt", "Select for batch signing"), systemImage: "square.stack.3d.up") } } } }
+				if
+					!_filteredSignedApps.isEmpty,
+					_selectedLibrarySegment == 1
+				{
+					NBSection(
+						.localized("Signed"),
+						secondary: _filteredSignedApps.count.description
+					) {
+						ForEach(_filteredSignedApps, id: \.uuid) { app in
+							LibraryCellView(
+								app: app,
+								selectedInfoAppPresenting: $_selectedInfoAppPresenting,
+								selectedSigningAppPresenting: $_selectedSigningAppPresenting,
+								selectedInstallAppPresenting: $_selectedInstallAppPresenting,
+								selectedAppUUIDs: $_selectedAppUUIDs
+							)
+							.compatMatchedTransitionSource(id: app.uuid ?? "", ns: _namespace).listRowBackground(XSignLiquidGlassRowBackground())
+						}
+					}
+				}
+				
+				if
+					!_filteredImportedApps.isEmpty,
+					_selectedLibrarySegment == 0
+				{
+					NBSection(
+						.localized("Imported"),
+						secondary: _filteredImportedApps.count.description
+					) {
+						ForEach(_filteredImportedApps, id: \.uuid) { app in
+							LibraryCellView(
+								app: app,
+								selectedInfoAppPresenting: $_selectedInfoAppPresenting,
+								selectedSigningAppPresenting: $_selectedSigningAppPresenting,
+								selectedInstallAppPresenting: $_selectedInstallAppPresenting,
+								selectedAppUUIDs: $_selectedAppUUIDs
+							)
+							.compatMatchedTransitionSource(id: app.uuid ?? "", ns: _namespace).listRowBackground(XSignLiquidGlassRowBackground())
+						}
+					}
+				}
+				if _filteredSignedApps.isEmpty, _filteredImportedApps.isEmpty { if #available(iOS 17, *) { Section { ContentUnavailableView { Label(.localized("No Apps"), systemImage: "app.badge.checkmark") } description: { Text(.localized("Get started by importing your first IPA file.")) } actions: { Menu { _importActions() } label: { NBButton(.localized("Import"), style: .text) } } .frame(maxWidth: .infinity) .padding(.vertical, 24) .listRowBackground(Color.clear) .listRowSeparator(.hidden) } } }
+			}
+			.scrollContentBackground(.hidden)
+			.background(XSignLiquidGlassBackdrop())
+			.searchable(text: $_searchText, placement: .platform())
+			.compatSearchScopes($_selectedScope) {
+				ForEach(Scope.allCases, id: \.displayName) { scope in
+					Text(scope.displayName).tag(scope)
+				}
+			}
+			.scrollDismissesKeyboard(.interactively)
+			.alert(xsignT("Lưu Preset ký", "Save Signing Preset"), isPresented: $_isSavingPresetAlertPresented) {
+				TextField(xsignT("Tên preset", "Preset name"), text: $_newPresetName)
+				Button(xsignT("Lưu", "Save")) {
+					let trimmed = _newPresetName.trimmingCharacters(in: .whitespacesAndNewlines)
+					if !trimmed.isEmpty {
+						_presetManager.saveCustomPreset(name: trimmed, options: OptionsManager.shared.options)
+					}
+				}
+				Button(xsignT("Hủy", "Cancel"), role: .cancel) {}
+			} message: {
+				Text(xsignT("Lưu cấu hình tùy chọn ký hiện tại thành một preset mới.", "Save the current signing options as a new preset."))
+			}
+			.toolbar {
+				ToolbarItem(placement: .topBarLeading) {
+					EditButton()
+				}
+				
+				if _editMode.isEditing {
+					NBToolbarButton(
+						.localized("Delete"),
+						systemImage: "trash",
+						isDisabled: _selectedAppUUIDs.isEmpty
+					) {
+						_bulkDeleteSelectedApps()
+					}
+				} else {
+					ToolbarItem(placement: .topBarTrailing) {
+						Button {
+							Task {
+								await _checkForUpdates()
+							}
+						} label: {
+							Image(systemName: _isUpdateCheckCompleteVisible ? "checkmark.circle.fill" : "arrow.clockwise")
+								.rotationEffect(.degrees(_updateCheckRotation))
+								.animation(
+									updateManager.isChecking
+										? .linear(duration: 0.8).repeatForever(autoreverses: false)
+										: .default,
+									value: _updateCheckRotation
+								)
+						}
+						.disabled(updateManager.isChecking)
+						.accessibilityLabel(.localized("Check for Updates"))
+					}
+					ToolbarItem(placement: .topBarTrailing) { Button { _isBatchQueuePresenting = true } label: { Label(xsignT("Ký hàng loạt", "Batch Sign"), systemImage: "square.stack.3d.up") } }
+					
+					NBToolbarMenu(
+						systemImage: "plus",
+						style: .icon,
+						placement: .topBarTrailing
+					) {
+						_importActions()
+					}
+				}
+			}
+			.environment(\.editMode, $_editMode) .sheet(isPresented: $_isBatchQueuePresenting) { XSignBatchQueueSheet(apps: Array(_importedApps)) }
+			.sheet(item: $_selectedInfoAppPresenting) { app in
+				LibraryInfoView(app: app.base)
+			}
+			.sheet(item: $_selectedInstallAppPresenting) { app in
+				InstallPreviewView(app: app.base, isSharing: app.archive)
+					.presentationDetents([.height(200)])
+					.presentationDragIndicator(.visible)
+			}
+			.fullScreenCover(item: $_selectedSigningAppPresenting) { app in
+				SigningView(app: app.base)
+					.compatNavigationTransition(id: app.base.uuid ?? "", ns: _namespace)
+			}
+			.sheet(isPresented: $_isImportingPresenting) {
+				FileImporterRepresentableView(
+					allowedContentTypes:  [.ipa, .tipa],
+					allowsMultipleSelection: true,
+					onDocumentsPicked: { urls in
+						guard !urls.isEmpty else { return }
+						
+						for url in urls {
+							let id = "XSignManualDownload_\(UUID().uuidString)"
+							let dl = downloadManager.startArchive(from: url, id: id)
+							try? downloadManager.handlePachageFile(url: url, dl: dl)
+						}
+if urls.count == 1 {
+DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+NotificationCenter.default.post(name: Notification.Name("XSign.importedIPA"), object: nil)
+}
+}
+					}
+				)
+				.ignoresSafeArea()
+			}
+			.alert(.localized("Import from URL"), isPresented: $_isDownloadingPresenting) {
+				TextField(.localized("URL"), text: $_alertDownloadString)
+					.textInputAutocapitalization(.never)
+				Button(.localized("Cancel"), role: .cancel) {
+					_alertDownloadString = ""
+				}
+				Button(.localized("OK")) {
+					if let url = URL(string: _alertDownloadString) {
+						_ = downloadManager.startDownload(from: url, id: "XSignManualDownload_\(UUID().uuidString)")
+					}
+				}
+			}
+			.onReceive(NotificationCenter.default.publisher(for: .xsignInstallApp)) { _ in
+				_presentInstallForLatestSigned()
+			}
+.onReceive(NotificationCenter.default.publisher(for: Notification.Name("XSign.importedIPA"))) { _ in
+if let latest = _importedApps.first {
+_promptApp = latest
+_showQuickSignPrompt = true
+}
+}
+.alert(xsignT("Ký & cài ngay?", "Sign & install now?"), isPresented: $_showQuickSignPrompt) {
+Button(xsignT("Ký & cài ngay", "Sign & Install Now")) {
+guard let app = _promptApp else { return }
+let cert = (_quickSelectedCertIndex >= 0 && _quickSelectedCertIndex < _quickCertificates.count)
+? _quickCertificates[_quickSelectedCertIndex]
+: _quickCertificates.first
+guard let cert else {
+UIAlertController.showAlertWithOk(title: xsignT("Thiếu chứng chỉ", "Missing Certificate"), message: xsignT("Vui lòng thêm chứng chỉ trong Cài đặt trước khi ký.", "Please add a certificate in Settings before signing."))
+return
+}
+XSignQuickSigner.signAndInstall(app, certificate: cert) { error in
+if let error {
+UIAlertController.showAlertWithOk(title: xsignT("Lỗi", "Error"), message: error.localizedDescription)
+}
+}
+}
+Button(xsignT("Tùy chỉnh ký", "Customize Signing")) {
+if let app = _promptApp {
+_selectedSigningAppPresenting = AnyApp(base: app)
+}
+}
+Button(xsignT("Để sau", "Later"), role: .cancel) { }
+} message: {
+Text(xsignT("Bạn có muốn ký và cài đặt \(_promptApp?.name ?? "IPA") ngay không?", "Do you want to sign and install \(_promptApp?.name ?? "IPA") now?"))
+}
+			.onChange(of: _editMode) { mode in
+				if mode == .inactive {
+					_selectedAppUUIDs.removeAll()
+				}
+			}
+			.onChange(of: updateManager.isChecking) { isChecking in
+				_handleUpdateCheckStateChange(isChecking)
+			}
+		}
+	}
+}
+
+// MARK: - Extension: View
+extension LibraryView {
+	@ViewBuilder
+	private func _importActions() -> some View {
+		Button(.localized("Import from Files"), systemImage: "folder") {
+			_isImportingPresenting = true
+		}
+		Button(.localized("Import from URL"), systemImage: "link") {
+			_isDownloadingPresenting = true
+		}
+	}
+}
+
+// MARK: - Extension: Auto install after signing
+extension LibraryView {
+	/// Mở InstallPreviewView (Semi Local OTA) cho ứng dụng vừa ký gần nhất.
+	/// Đợi màn hình ký (fullScreenCover) đóng hẳn, nếu không SwiftUI sẽ bỏ qua yêu cầu present.
+	private func _presentInstallForLatestSigned(attempt: Int = 0) {
+		if _selectedSigningAppPresenting != nil, attempt < 15 {
+			DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+				_presentInstallForLatestSigned(attempt: attempt + 1)
+			}
+			return
+		}
+		
+		let request = NSFetchRequest<Signed>(entityName: "Signed")
+		request.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
+		request.fetchLimit = 1
+		guard let latest = (try? Storage.shared.context.fetch(request))?.first ?? _signedApps.first else {
+			return
+		}
+		
+		if _selectedInstallAppPresenting != nil {
+			_selectedInstallAppPresenting = nil
+			DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+				_selectedInstallAppPresenting = AnyApp(base: latest)
+			}
+		} else {
+			_selectedInstallAppPresenting = AnyApp(base: latest)
+		}
+	}
+}
+
+// MARK: - Extension: Bulk Delete
+extension LibraryView {
+	private func _bulkDeleteSelectedApps() {
+		let selectedApps = _getAllApps().filter { app in
+			guard let uuid = app.uuid else { return false }
+			return _selectedAppUUIDs.contains(uuid)
+		}
+		
+		for app in selectedApps {
+			Storage.shared.deleteApp(for: app)
+		}
+		
+		_selectedAppUUIDs.removeAll()
+		
+		// _editMode = .inactive
+	}
+	
+	private func _getAllApps() -> [AppInfoPresentable] {
+		var allApps: [AppInfoPresentable] = []
+		
+		if _selectedScope == .all || _selectedScope == .signed {
+			allApps.append(contentsOf: _filteredSignedApps)
+		}
+		
+		if _selectedScope == .all || _selectedScope == .imported {
+			allApps.append(contentsOf: _filteredImportedApps)
+		}
+		
+		return allApps
+	}
+	
+	private func _checkForUpdates() async {
+		let localApps = _signedApps.map { $0 as AppInfoPresentable } + _importedApps.map { $0 as AppInfoPresentable }
+		await updateManager.checkForUpdates(
+			sources: Array(_sources),
+			localApps: localApps
+		)
+	}
+	
+	private func _handleUpdateCheckStateChange(_ isChecking: Bool) {
+		if isChecking {
+			_isUpdateCheckCompleteVisible = false
+			_updateCheckRotation = 0
+			withAnimation(.linear(duration: 0.8).repeatForever(autoreverses: false)) {
+				_updateCheckRotation = 360
+			}
+		} else {
+			withAnimation(.none) {
+				_updateCheckRotation = 0
+			}
+			
+			_isUpdateCheckCompleteVisible = true
+			Task { @MainActor in
+				try? await Task.sleep(nanoseconds: 900_000_000)
+				if !updateManager.isChecking {
+					_isUpdateCheckCompleteVisible = false
+				}
+			}
+		}
+	}
+}
+
+// MARK: - Extension: View (Sort)
+extension LibraryView {
+	enum Scope: CaseIterable {
+		case all
+		case signed
+		case imported
+		
+		var displayName: String {
+			switch self {
+			case .all: return .localized("All")
+			case .signed: return .localized("Signed")
+			case .imported: return .localized("Imported")
+			}
+		}
+	}
+
+private struct XSignBatchQueueSheet: View {
+	let apps: [Imported]
+
+	@Environment(\.dismiss) private var dismiss
+
+	@FetchRequest(
+		entity: CertificatePair.entity(),
+		sortDescriptors: [NSSortDescriptor(keyPath: \CertificatePair.date, ascending: false)]
+	) private var certificates: FetchedResults<CertificatePair>
+
+	@State private var _selectedIds: Set<NSManagedObjectID> = []
+	@State private var _selectedCerts: [NSManagedObjectID: CertificatePair] = [:]
+	@State private var _statuses: [NSManagedObjectID: String] = [:]
+	@State private var _isRunning = false
+	@State private var _completedCount = 0
+	/// Đặt bởi nút "Hủy hàng đợi" trên Live Activity (XSignCancelBatchSignIntent).
+	@State private var _cancelRequested = false
+
+	private var _selectedApps: [Imported] {
+		apps.filter { _selectedIds.contains($0.objectID) }
+	}
+
+	private func _certName(for cert: CertificatePair?) -> String {
+		guard let cert else { return xsignT("Chưa có chứng chỉ", "No certificate") }
+		return cert.nickname ?? Storage.shared.getProvisionFileDecoded(for: cert)?.Name ?? .localized("Unknown")
+	}
+
+	private func _statusColor(for status: String) -> Color {
+		if status == xsignT("Thành công", "Success") { return .green }
+		if status.hasPrefix(xsignT("Lỗi", "Error")) { return .red }
+		if status == xsignT("Đang ký...", "Signing...") { return .accentColor }
+		return .secondary
+	}
+
+	var body: some View {
+		NavigationStack {
+			VStack(spacing: 0) {
+				if _isRunning || _completedCount > 0 {
+					VStack(alignment: .leading, spacing: 6) {
+						HStack {
+							Text(_isRunning ? xsignT("Đang ký hàng loạt...", "Batch signing...") : xsignT("Hoàn tất hàng đợi", "Queue completed"))
+								.font(.subheadline.weight(.semibold))
+							Spacer()
+							Text("\(_completedCount)/\(_selectedApps.count)")
+								.font(.subheadline.monospacedDigit())
+								.foregroundStyle(.secondary)
+						}
+						ProgressView(
+							value: Double(_completedCount),
+							total: Double(max(1, _selectedApps.count))
+						)
+					}
+					.padding()
+					.background(Color(.secondarySystemGroupedBackground))
+				}
+
+				List {
+					if apps.isEmpty {
+						Text(xsignT("Chưa có IPA nào được nhập.", "No IPA files imported yet."))
+							.foregroundStyle(.secondary)
+					} else {
+						ForEach(apps, id: \.objectID) { app in
+							let id = app.objectID
+							let isSelected = _selectedIds.contains(id)
+							let currentCert = _selectedCerts[id] ?? certificates.first
+							let status = _statuses[id] ?? (isSelected ? xsignT("Đang chờ", "Waiting") : "")
+
+							VStack(alignment: .leading, spacing: 8) {
+								HStack(spacing: 12) {
+									Button {
+										guard !_isRunning else { return }
+										if isSelected {
+											_selectedIds.remove(id)
+										} else {
+											_selectedIds.insert(id)
+											if _selectedCerts[id] == nil, let first = certificates.first {
+												_selectedCerts[id] = first
+											}
+										}
+									} label: {
+										Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+											.font(.title3)
+											.foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
+									}
+									.buttonStyle(.plain)
+
+									FRAppIconView(app: app, size: 40)
+
+									VStack(alignment: .leading, spacing: 2) {
+										Text(app.name ?? .localized("Unknown"))
+											.font(.headline)
+											.lineLimit(1)
+										if !status.isEmpty {
+											Text(status)
+												.font(.caption.weight(.medium))
+												.foregroundStyle(_statusColor(for: status))
+												.lineLimit(2)
+										}
+									}
+
+									Spacer()
+								}
+
+								if isSelected && !certificates.isEmpty {
+									HStack {
+										Text(xsignT("Chứng chỉ:", "Certificate:"))
+											.font(.caption)
+											.foregroundStyle(.secondary)
+										Spacer()
+										Menu {
+											ForEach(certificates, id: \.objectID) { cert in
+												Button {
+													_selectedCerts[id] = cert
+												} label: {
+													Text(_certName(for: cert))
+												}
+											}
+										} label: {
+											HStack(spacing: 4) {
+												Text(_certName(for: currentCert))
+													.font(.caption.weight(.medium))
+													.lineLimit(1)
+												Image(systemName: "chevron.up.chevron.down")
+													.font(.caption2)
+											}
+										}
+										.disabled(_isRunning)
+									}
+									.padding(.leading, 36)
+								}
+							}
+							.padding(.vertical, 4)
+						}
+					}
+				}
+			}
+			.navigationTitle(xsignT("Ký hàng loạt", "Batch Sign"))
+			.navigationBarTitleDisplayMode(.inline)
+			.toolbar {
+				ToolbarItem(placement: .topBarLeading) {
+					Button(xsignT("Đóng", "Close")) {
+						dismiss()
+					}
+					.disabled(_isRunning)
+				}
+				ToolbarItem(placement: .topBarTrailing) {
+					Button(xsignT("Bắt đầu ký hàng loạt", "Start Batch Signing")) {
+						_startBatchSigning()
+					}
+					.disabled(_isRunning || _selectedApps.isEmpty || certificates.isEmpty)
+				}
+			}
+			.onAppear {
+				if let first = certificates.first {
+					for app in apps where _selectedCerts[app.objectID] == nil {
+						_selectedCerts[app.objectID] = first
+					}
+				}
+			}
+			.interactiveDismissDisabled(_isRunning)
+			.onReceive(NotificationCenter.default.publisher(for: .xsignCancelBatchSignRequested)) { _ in
+				if _isRunning {
+					_cancelRequested = true
+				}
+			}
+		}
+	}
+
+	private func _startBatchSigning() {
+		let targets = _selectedApps
+		guard !targets.isEmpty else { return }
+
+		_isRunning = true
+		_completedCount = 0
+		_cancelRequested = false
+		for app in targets {
+			_statuses[app.objectID] = xsignT("Đang chờ", "Waiting")
+		}
+		XSignLiveActivityManager.shared.batchStarted(total: targets.count)
+
+		Task {
+			var succeeded = 0
+			var wasCancelled = false
+			for (index, app) in targets.enumerated() {
+				let id = app.objectID
+				let cert = _selectedCerts[id] ?? certificates.first
+				let shouldStop = await MainActor.run { _cancelRequested }
+				if shouldStop {
+					wasCancelled = true
+					await MainActor.run {
+						for remaining in targets[index...] {
+							_statuses[remaining.objectID] = xsignT("Đã hủy", "Cancelled")
+						}
+					}
+					break
+				}
+				await MainActor.run {
+					_statuses[id] = xsignT("Đang ký...", "Signing...")
+					XSignLiveActivityManager.shared.batchItem(
+						current: index + 1,
+						total: targets.count,
+						appName: app.name ?? .localized("Unknown"),
+						certName: _certName(for: cert)
+					)
+				}
+
+				let errorMessage: String? = await withCheckedContinuation { continuation in
+					FR.signPackageFile(
+						app,
+						using: XSignPresetManager.shared.effectiveOptions, // using: OptionsManager.shared.options,
+						icon: nil,
+						certificate: cert
+					) { error in
+						continuation.resume(returning: error?.localizedDescription)
+					}
+				}
+
+				await MainActor.run {
+					if let errorMessage {
+						_statuses[id] = xsignT("Lỗi: \(errorMessage)", "Error: \(errorMessage)")
+					} else {
+						_statuses[id] = xsignT("Thành công", "Success")
+					}
+					_completedCount += 1
+				}
+				if errorMessage == nil {
+					succeeded += 1
+				}
+			}
+
+			let finalSucceeded = succeeded
+			let finalCancelled = wasCancelled
+			await MainActor.run {
+				_isRunning = false
+				_cancelRequested = false
+				XSignLiveActivityManager.shared.batchFinished(
+					succeeded: finalSucceeded,
+					total: targets.count,
+					cancelled: finalCancelled
+				)
+			}
+		}
+	}
+}
+}
+private extension XSignPresetManager {
+	var activePreset: XSignPreset {
+		if let id = defaultPresetID, let match = allPresets.first(where: { $0.id == id }) {
+			return match
+		}
+		return builtInPresets[0]
+	}
+}
+
