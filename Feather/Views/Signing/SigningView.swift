@@ -295,6 +295,12 @@ extension SigningView {
 
 // MARK: - Extension: View (import)
 extension SigningView {
+	/// Tên chứng chỉ ngắn gọn cho Live Activity.
+	private func _liveActivityCertName() -> String {
+		guard let cert = _selectedCert() else { return xsignT("Mặc định", "Default") }
+		return cert.nickname ?? Storage.shared.getProvisionFileDecoded(for: cert)?.Name ?? .localized("Unknown")
+	}
+	
 	private func _start() {
 		guard
 			_selectedCert() != nil || _temporaryOptions.signingOption != .default
@@ -315,7 +321,10 @@ extension SigningView {
 		_signingStepIndex = 1
 		_signingDone = false
 		_signingError = nil
-		XSignLiveActivityManager.shared.start(appName: app.name ?? "XSign", stage: .signing, progress: _signingProgress)
+		XSignLiveActivityManager.shared.signingStarted(
+			appName: _temporaryOptions.appName ?? app.name ?? "XSign",
+			certName: _liveActivityCertName()
+		)
 		_progressTimer?.invalidate()
 		_progressTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
 			DispatchQueue.main.async {
@@ -325,7 +334,7 @@ extension SigningView {
 				} else {
 					_signingProgress = min(0.88, _signingProgress + 0.02)
 				}
-				XSignLiveActivityManager.shared.update(stage: .signing, progress: _signingProgress)
+				XSignLiveActivityManager.shared.signingStep(index: _signingStepIndex, progress: _signingProgress)
 			}
 		}
 
@@ -342,7 +351,7 @@ extension SigningView {
 				if let error {
 					_signingError = error.localizedDescription
 					_isSigning = false
-					XSignLiveActivityManager.shared.end(stage: .failed)
+					XSignLiveActivityManager.shared.signingFailed(message: error.localizedDescription)
 					return
 				}
 
@@ -350,11 +359,17 @@ extension SigningView {
 				_signingProgress = 1.0
 				_signingDone = true
 				_isSigning = false
-				XSignLiveActivityManager.shared.update(stage: .signing, progress: 1.0, force: true)
-				// Nếu tự động cài sau khi ký thì activity tiếp tục ở bước cài đặt (InstallPreviewView),
-				// ngược lại kết thúc tại đây.
-				if !_temporaryOptions.post_installAppAfterSigned {
-					XSignLiveActivityManager.shared.end(stage: .completed)
+				XSignLiveActivityManager.shared.signingStep(index: 6, progress: 1.0)
+				// Tự cài sau khi ký: activity chuyển tại chỗ sang installingServer (InstallPreviewView).
+				// Ngược lại: chuyển sang postSignReady với nút Cài đặt ngay / Chia sẻ IPA.
+				let autoInstall = _temporaryOptions.post_installAppAfterSigned
+				let signedName = _temporaryOptions.appName ?? app.name ?? "XSign"
+				DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+					XSignLiveActivityManager.shared.signingFinished(
+						appName: signedName,
+						signedAppID: XSignLiveActivityManager.latestSignedAppID(),
+						autoInstall: autoInstall
+					)
 				}
 
 				if _temporaryOptions.post_deleteAppAfterSigned, !app.isSigned {

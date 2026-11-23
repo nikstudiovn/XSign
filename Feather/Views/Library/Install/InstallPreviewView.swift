@@ -70,8 +70,19 @@ struct InstallPreviewView: View {
 			case .completed, .broken:
 				break
 			default:
-				XSignLiveActivityManager.shared.cancel()
+				if !isSharing {
+					XSignLiveActivityManager.shared.installClosed()
+				}
 			}
+		}
+		// Live Activity: nút "Tắt máy chủ" (XSignStopInstallServerIntent).
+		.onReceive(NotificationCenter.default.publisher(for: .xsignStopInstallServerRequested)) { _ in
+			guard !isSharing else { return }
+			dismiss()
+		}
+		// Live Activity: nút "Cài lại" (xsign://reinstall/<id>).
+		.onReceive(NotificationCenter.default.publisher(for: .xsignReinstallRequested)) { note in
+			_reopenInstallPrompt(for: note.object as? String)
 		}
 		.sheet(isPresented: $_isWebviewPresenting) {
 			SafariRepresentableView(url: installer.pageEndpoint).ignoresSafeArea()
@@ -298,37 +309,64 @@ struct InstallPreviewView: View {
 }
 
 
-// MARK: - Live Activity
+// MARK: - Live Activity (installingServer)
 extension InstallPreviewView {
+	/// Giai đoạn máy chủ Bán cục bộ tương ứng với trạng thái cài đặt, nil = đã kết thúc.
+	fileprivate func _serverStage(for status: InstallerStatusViewModel.InstallerStatus) -> XSignServerStage? {
+		switch status {
+		case .none, .ready, .sendingManifest:
+			return .manifest
+		case .sendingPayload:
+			return .transferring
+		case .installing:
+			return .transferred
+		case .completed, .broken:
+			return nil
+		}
+	}
+	
 	fileprivate func _updateLiveActivity(for status: InstallerStatusViewModel.InstallerStatus) {
 		guard !isSharing else { return }
 		let manager = XSignLiveActivityManager.shared
-		let progress = viewModel.overallProgress
 		switch status {
-		case .none, .ready:
-			manager.start(appName: app.name ?? "XSign", stage: .sending, progress: progress)
-		case .sendingManifest, .sendingPayload:
-			manager.update(stage: .sending, progress: progress, force: true)
-		case .installing:
-			manager.update(stage: .installing, progress: progress, force: true)
 		case .completed:
-			manager.end(stage: .completed)
+			manager.installFinished(success: true)
 		case .broken:
-			manager.end(stage: .failed)
+			manager.installFinished(success: false)
+		default:
+			guard let stage = _serverStage(for: status) else { return }
+			manager.installStage(
+				appName: app.name ?? "XSign",
+				appID: app.uuid ?? "",
+				stage: stage,
+				progress: viewModel.overallProgress
+			)
 		}
 	}
 	
 	/// Đẩy giá trị tiến độ thực tế (0.0 → 1.0) của InstallerStatusViewModel lên Live Activity.
 	fileprivate func _updateLiveActivityProgress(_ progress: Double) {
-		guard !isSharing else { return }
-		let manager = XSignLiveActivityManager.shared
-		switch viewModel.status {
-		case .installing:
-			manager.update(stage: .installing, progress: progress)
-		case .completed, .broken:
-			break
-		default:
-			manager.update(stage: .sending, progress: progress)
+		guard !isSharing, let stage = _serverStage(for: viewModel.status) else { return }
+		XSignLiveActivityManager.shared.installStage(
+			appName: app.name ?? "XSign",
+			appID: app.uuid ?? "",
+			stage: stage,
+			progress: progress
+		)
+	}
+	
+	/// Mở lại hộp thoại cài đặt iOS của máy chủ đang chạy.
+	fileprivate func _reopenInstallPrompt(for appID: String?) {
+		guard !isSharing, _installationMethod == 0, installer.packageUrl != nil else { return }
+		if let appID, !appID.isEmpty, appID != app.uuid { return }
+		let installer = installer
+		Task {
+			let link = await installer.resolveITunesLinkExternal()
+			if let url = URL(string: link) {
+				await MainActor.run {
+					UIApplication.shared.open(url)
+				}
+			}
 		}
 	}
 }

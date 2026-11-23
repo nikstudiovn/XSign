@@ -15,6 +15,7 @@ import IDeviceSwift
 struct SettingsView: View {
 	@AppStorage("XSign.selectedCert") private var _storedSelectedCert: Int = 0
 	@AppStorage("XSign.appLanguage") private var _appLanguage: String = "system"
+	@AppStorage(XSignLiveActivityManager.enabledKey) private var _liveActivityEnabled: Bool = true
 	@State private var _currentIcon: String? = UIApplication.shared.alternateIconName
 	
 	// MARK: Fetch
@@ -100,6 +101,17 @@ struct SettingsView: View {
 					}
 					NavigationLink(destination: InstallationView()) {
 						Label(.localized("Installation"), systemImage: "arrow.down.circle")
+					}
+					Toggle(isOn: Binding(
+						get: { _liveActivityEnabled },
+						set: { newValue in
+							_liveActivityEnabled = newValue
+							if !newValue {
+								XSignLiveActivityManager.shared.endAll()
+							}
+						}
+					)) {
+						Label(xsignT("Hoạt động trực tiếp & Dynamic Island", "Live Activities & Dynamic Island"), systemImage: "rectangle.topthird.inset.filled")
 					}
 				} footer: {
 					Text(.localized("Configure the apps way of installing, its zip compression levels, and custom modifications to apps."))

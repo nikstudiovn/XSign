@@ -1,6 +1,7 @@
 import SwiftUI
 import NimbleViews
 import Security
+import CoreData
 
 // MARK: - OCSP Status
 enum XSignOCSPStatus: String {
@@ -51,13 +52,40 @@ final class XSignOCSPCache: ObservableObject {
 
 		let certURL = Storage.shared.getFile(.certificate, from: cert)
 		let password = cert.password ?? ""
+		let certObjectID = cert.objectID
 
 		Task.detached(priority: .utility) {
 			let result = Self.performOCSPCheck(certURL: certURL, password: password)
 			await MainActor.run {
 				self.cache[uuid] = CacheEntry(status: result, checkedAt: Date())
+				self._reportLiveActivityIfDefault(certObjectID, status: result)
 			}
 		}
+	}
+
+	/// Live Activity certAlert: chỉ cho chứng chỉ mặc định (XSign.selectedCert), khi bị thu hồi
+	/// hoặc còn ≤ 3 ngày. XSignLiveActivityManager giới hạn tối đa 1 lần/phiên.
+	private func _reportLiveActivityIfDefault(_ certObjectID: NSManagedObjectID, status: XSignOCSPStatus) {
+		guard let cert = try? Storage.shared.context.existingObject(with: certObjectID) as? CertificatePair else { return }
+		let request = NSFetchRequest<CertificatePair>(entityName: "CertificatePair")
+		request.sortDescriptors = [NSSortDescriptor(key: "date", ascending: false)]
+		guard let all = try? Storage.shared.context.fetch(request) else { return }
+		let index = UserDefaults.standard.integer(forKey: "XSign.selectedCert")
+		guard all.indices.contains(index), all[index].objectID == cert.objectID else { return }
+		
+		let revoked = status == .revoked || cert.revoked == true
+		var days = Int.max
+		if let expiration = cert.expiration {
+			days = Calendar.current.dateComponents([.day], from: Date(), to: expiration).day ?? 0
+		}
+		guard revoked || days <= 3 else { return }
+		
+		let name = cert.nickname ?? Storage.shared.getProvisionFileDecoded(for: cert)?.Name ?? .localized("Unknown")
+		XSignLiveActivityManager.shared.reportCertificate(
+			name: name,
+			revoked: revoked,
+			daysRemaining: days
+		)
 	}
 
 	nonisolated private static func performOCSPCheck(certURL: URL?, password: String) -> XSignOCSPStatus {

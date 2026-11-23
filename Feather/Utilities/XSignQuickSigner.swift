@@ -27,13 +27,20 @@ enum XSignQuickSigner {
 	) {
 		let manager = XSignLiveActivityManager.shared
 		let box = ProgressBox()
-		manager.start(appName: app.name ?? "XSign", stage: .signing, progress: box.value)
+		let appName = app.name ?? "XSign"
+		let certName: String = {
+			guard let certificate else { return xsignT("Mặc định", "Default") }
+			return certificate.nickname ?? Storage.shared.getProvisionFileDecoded(for: certificate)?.Name ?? .localized("Unknown")
+		}()
+		manager.signingStarted(appName: appName, certName: certName)
 		
 		// FR.signPackageFile không báo tiến độ chi tiết, nên tiến độ tiệm cận 90%
 		// rồi nhảy lên 100% đúng lúc ký và đóng gói xong.
 		let timer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { _ in
 			box.value = min(0.9, box.value + (0.9 - box.value) * 0.15)
-			manager.update(stage: .signing, progress: box.value)
+			// Ước lượng bước 1...5 theo tiến độ (bước 6 = hoàn tất).
+			let step = min(5, 1 + Int(box.value / 0.9 * 5))
+			manager.signingStep(index: step, progress: box.value)
 		}
 		
 		FR.signPackageFile(
@@ -45,11 +52,16 @@ enum XSignQuickSigner {
 			DispatchQueue.main.async {
 				timer.invalidate()
 				if let error {
-					manager.end(stage: .failed)
+					manager.signingFailed(message: error.localizedDescription)
 					onFinish?(error)
 					return
 				}
-				manager.update(stage: .signing, progress: 1.0, force: true)
+				manager.signingStep(index: 6, progress: 1.0)
+				manager.signingFinished(
+					appName: appName,
+					signedAppID: XSignLiveActivityManager.latestSignedAppID(),
+					autoInstall: true
+				)
 				onFinish?(nil)
 				requestInstall()
 			}

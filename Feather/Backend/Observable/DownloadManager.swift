@@ -95,6 +95,13 @@ class DownloadManager: NSObject, ObservableObject {
 		
 		downloads.append(download)
 		
+		// Live Activity: mode downloading.
+		let displayName = url.deletingPathExtension().lastPathComponent
+		XSignLiveActivityManager.shared.downloadStarted(
+			id: id,
+			name: displayName.removingPercentEncoding ?? displayName
+		)
+		
 		#if !targetEnvironment(macCatalyst)
 		if #available(iOS 26.0, *) {
 			BackgroundTaskManager.shared.startTask(for: id, filename: url.lastPathComponent)
@@ -142,6 +149,7 @@ class DownloadManager: NSObject, ObservableObject {
 	
 	func cancelDownload(_ download: Download) {
 		download.task?.cancel()
+		XSignLiveActivityManager.shared.downloadCancelled(id: download.id)
 		
 		if let index = downloads.firstIndex(where: { $0.id == download.id }) {
 			downloads.remove(at: index)
@@ -177,6 +185,7 @@ extension DownloadManager: URLSessionDownloadDelegate {
 	
 	func handlePachageFile(url: URL, dl: Download) throws {
 		FR.handlePackageFile(url, download: dl) { err in
+			XSignLiveActivityManager.shared.downloadFinished(id: dl.id, success: err == nil)
 			if err != nil {
 				let generator = UINotificationFeedbackGenerator()
 				generator.notificationOccurred(.error)
@@ -229,6 +238,11 @@ extension DownloadManager: URLSessionDownloadDelegate {
 			: 0
 			download.bytesDownloaded = totalBytesWritten
 			download.totalBytes = totalBytesExpectedToWrite
+			XSignLiveActivityManager.shared.downloadProgress(
+				id: download.id,
+				received: totalBytesWritten,
+				total: totalBytesExpectedToWrite
+			)
 			
 			#if !targetEnvironment(macCatalyst)
 			if #available(iOS 26.0, *) {
@@ -240,11 +254,17 @@ extension DownloadManager: URLSessionDownloadDelegate {
 	
 	func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
 		guard
-			let _ = error,
+			let error,
 			let downloadTask = task as? URLSessionDownloadTask,
 			let download = getDownloadTask(by: downloadTask)
 		else {
 			return
+		}
+		
+		if (error as? URLError)?.code == .cancelled {
+			XSignLiveActivityManager.shared.downloadCancelled(id: download.id)
+		} else {
+			XSignLiveActivityManager.shared.downloadFinished(id: download.id, success: false)
 		}
 		
 		DispatchQueue.main.async {

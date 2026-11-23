@@ -504,6 +504,8 @@ private struct XSignBatchQueueSheet: View {
 	@State private var _statuses: [NSManagedObjectID: String] = [:]
 	@State private var _isRunning = false
 	@State private var _completedCount = 0
+	/// Đặt bởi nút "Hủy hàng đợi" trên Live Activity (XSignCancelBatchSignIntent).
+	@State private var _cancelRequested = false
 
 	private var _selectedApps: [Imported] {
 		apps.filter { _selectedIds.contains($0.objectID) }
@@ -647,6 +649,11 @@ private struct XSignBatchQueueSheet: View {
 				}
 			}
 			.interactiveDismissDisabled(_isRunning)
+			.onReceive(NotificationCenter.default.publisher(for: .xsignCancelBatchSignRequested)) { _ in
+				if _isRunning {
+					_cancelRequested = true
+				}
+			}
 		}
 	}
 
@@ -656,16 +663,36 @@ private struct XSignBatchQueueSheet: View {
 
 		_isRunning = true
 		_completedCount = 0
+		_cancelRequested = false
 		for app in targets {
 			_statuses[app.objectID] = xsignT("Đang chờ", "Waiting")
 		}
+		XSignLiveActivityManager.shared.batchStarted(total: targets.count)
 
 		Task {
-			for app in targets {
+			var succeeded = 0
+			var wasCancelled = false
+			for (index, app) in targets.enumerated() {
 				let id = app.objectID
 				let cert = _selectedCerts[id] ?? certificates.first
+				let shouldStop = await MainActor.run { _cancelRequested }
+				if shouldStop {
+					wasCancelled = true
+					await MainActor.run {
+						for remaining in targets[index...] {
+							_statuses[remaining.objectID] = xsignT("Đã hủy", "Cancelled")
+						}
+					}
+					break
+				}
 				await MainActor.run {
 					_statuses[id] = xsignT("Đang ký...", "Signing...")
+					XSignLiveActivityManager.shared.batchItem(
+						current: index + 1,
+						total: targets.count,
+						appName: app.name ?? .localized("Unknown"),
+						certName: _certName(for: cert)
+					)
 				}
 
 				let errorMessage: String? = await withCheckedContinuation { continuation in
@@ -687,10 +714,21 @@ private struct XSignBatchQueueSheet: View {
 					}
 					_completedCount += 1
 				}
+				if errorMessage == nil {
+					succeeded += 1
+				}
 			}
 
+			let finalSucceeded = succeeded
+			let finalCancelled = wasCancelled
 			await MainActor.run {
 				_isRunning = false
+				_cancelRequested = false
+				XSignLiveActivityManager.shared.batchFinished(
+					succeeded: finalSucceeded,
+					total: targets.count,
+					cancelled: finalCancelled
+				)
 			}
 		}
 	}
