@@ -15,7 +15,7 @@
 
 ## Giới thiệu
 
-**XSign** là ứng dụng ký và cài đặt tệp `.ipa` trực tiếp trên thiết bị iOS/iPadOS (sử dụng chứng chỉ Apple Developer Program), được phát triển và tùy biến sâu từ [Feather](https://github.com/claration/feather). XSign tập trung vào tốc độ ký gọn nhẹ, giao diện chuẩn iOS hiện đại, hỗ trợ tiếng Việt đầy đủ và hoàn toàn không theo dõi người dùng hay chèn quảng cáo.
+**XSign** là ứng dụng ký và cài đặt tệp `.ipa` trực tiếp trên thiết bị iOS/iPadOS (sử dụng chứng chỉ Apple Developer Program), được phát triển và tùy biến sâu từ [XSign](https://github.com/claration/feather). XSign tập trung vào tốc độ ký gọn nhẹ, giao diện chuẩn iOS hiện đại, hỗ trợ tiếng Việt đầy đủ và hoàn toàn không theo dõi người dùng hay chèn quảng cáo.
 
 ---
 
@@ -53,11 +53,11 @@
 
 ---
 
-## Điểm khác biệt so với Feather gốc
+## Điểm khác biệt so với XSign gốc
 
-| Hạng mục | Feather gốc | XSign (`v1.0.0`) |
+| Hạng mục | XSign gốc | XSign (`v1.0.0`) |
 | :--- | :--- | :--- |
-| **Định danh & URL Scheme** | Feather | `com.nikstudiovn.xsign` / `xsign://` |
+| **Định danh & URL Scheme** | XSign | `com.nikstudiovn.xsign` / `xsign://` |
 | **Cài đặt qua máy chủ** | Fully Local (`backloop.dev`) / Semi Local | Luôn dùng **Semi Local OTA** (bỏ `backloop.dev` đã ngừng hoạt động), tự mở popup cài đặt |
 | **Thao tác Thư viện** | Menu chung | Nhấn 1 lần mở menu thao tác; **nhấn giữ** đổi chứng chỉ cài nhanh riêng cho từng IPA kèm nhãn hiển thị |
 | **Quản lý tệp** | Chỉ nhập qua bộ chọn tệp | Tích hợp tab **Thư mục** với nút **Thêm vào thư viện** trực tiếp cho `.ipa` / `.tipa` trong `InputFile` |
@@ -96,7 +96,7 @@ Tệp `.ipa` sau khi build sẽ nằm trong thư mục `packages/XSign.ipa`.
 ## Ghi nhận (Acknowledgements)
 
 XSign được xây dựng dựa trên nền tảng và các dự án mã nguồn mở tuyệt vời sau:
-- [Samara / Feather](https://github.com/claration/feather) — Nền tảng ứng dụng gốc.
+- [Samara / XSign](https://github.com/claration/feather) — Nền tảng ứng dụng gốc.
 - [Zsign](https://github.com/zhlynn/zsign) — Engine ký mã iOS đa nền tảng.
 - [IDeviceKitten](https://www.google.com/search?q=https://github.com/claration/IDeviceKitten), [ElleKit](https://github.com/tealbathingsuit/ellekit), [Vapor](https://github.com/vapor/vapor), [LiveContainer](https://github.com/khanhduytran0/LiveContainer), [Nuke](https://github.com/kean/Nuke), [Asspp](https://github.com/Lakr233/Asspp).
 

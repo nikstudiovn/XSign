@@ -1,6 +1,6 @@
 //
 //  UIColor+expiration.swift
-//  Feather
+//  XSign
 //
 //  Created by samara on 16.04.2025.
 //

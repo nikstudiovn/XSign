@@ -1,6 +1,6 @@
 //
 //  FileManager+bundle.swift
-//  Feather
+//  XSign
 //
 //  Created by samara on 16.04.2025.
 //
@@ -61,7 +61,7 @@ extension FileManager {
 		return dir
 	}
 	
-	// FeatherTweak
+	// XSignTweak
 	public func moveAndStore(_ url: URL, with prepend: String, completion: @escaping (URL) -> Void) {
 		let destination = _getDestination(url, with: prepend)
 		
@@ -76,7 +76,7 @@ extension FileManager {
 		completion(url)
 	}
 	
-	// FeatherTweak
+	// XSignTweak
 	private func _getDestination(_ url: URL, with prepend: String) -> (temp: URL, dest: URL) {
 		let tempDir = self.temporaryDirectory.appendingPathComponent("\(prepend)_\(UUID().uuidString)", isDirectory: true)
 		let destinationUrl = tempDir.appendingPathComponent(url.lastPathComponent)
