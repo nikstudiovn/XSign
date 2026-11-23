@@ -29,7 +29,8 @@ ZStack {
 				DownloadHeaderView(downloadManager: downloadManager)
 					.transition(.move(edge: .top).combined(with: .opacity))
 				VariedTabbarView()
-					.environment(\.managedObjectContext, storage.context)
+					.id(_appLanguage)
+				.environment(\.managedObjectContext, storage.context)
 					.onOpenURL(perform: _handleURL)
 					.transition(.move(edge: .top).combined(with: .opacity))
 			}
@@ -462,5 +463,25 @@ case "en": return en
 case "vi": return vi
 default: return Locale.preferredLanguages.first?.hasPrefix("vi") == true ? vi : en
 }
+}
+struct XSignLiquidGlassBackdrop: View {
+	var body: some View {
+ZStack {
+Color.black
+RadialGradient(colors: [Color.cyan.opacity(0.16), Color.clear], center: .topLeading, startRadius: 20, endRadius: 420)
+RadialGradient(colors: [Color.indigo.opacity(0.18), Color.clear], center: .bottomTrailing, startRadius: 20, endRadius: 460)
+}
+.ignoresSafeArea()
+}
+}
+
+struct XSignLiquidGlassRowBackground: View {
+	var body: some View {
+		if #available(iOS 26, *) {
+			Color.clear.glassEffect(.regular, in: .rect(cornerRadius: 14))
+		} else {
+			RoundedRectangle(cornerRadius: 14, style: .continuous).fill(.ultraThinMaterial)
+		}
+	}
 }
 
