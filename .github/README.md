@@ -54,7 +54,7 @@ Theo dõi mọi tác vụ nền ngay trên màn hình khóa và Dynamic Island:
 
 ### Hướng dẫn cài đặt
 
-1. Tải tệp `XSign.ipa` mới nhất từ trang [Releases](../../releases/latest).
+1. Tải tệp `XSign.ipa` mới nhất từ trang [Releases](https://github.com/nikstudiovn/XSign/releases/latest).
 2. Ký và cài đặt `XSign.ipa` lên iPhone/iPad bằng chứng chỉ Apple Developer của bạn hoặc qua các công cụ hỗ trợ nguồn AltSource.
 3. Mở XSign, vào **Cài đặt → Chứng chỉ** (hoặc chép tệp chứng chỉ vào thư mục **`InputFile`**) để nhập `.p12` và `.mobileprovision` (hoặc `.zip`).
 
@@ -122,7 +122,7 @@ Monitor background tasks directly on the Lock Screen and Dynamic Island:
 
 ### Installation Guide
 
-1. Download the latest `XSign.ipa` from [Releases](../../releases/latest).
+1. Download the latest `XSign.ipa` from [Releases](https://github.com/nikstudiovn/XSign/releases/latest).
 2. Sign and install `XSign.ipa` on your iPhone/iPad using your Apple Developer certificate or an AltSource-compatible signer.
 3. Open XSign, go to **Settings → Certificates** (or place your files in **`InputFile`**) to import your `.p12` and `.mobileprovision` (or `.zip`).
 
