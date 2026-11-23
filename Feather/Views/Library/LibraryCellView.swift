@@ -82,9 +82,9 @@ struct LibraryCellView: View {
 						_setAppCertificate(nil)
 					} label: {
 						if _selectedAppCertURI == nil {
-							Label("Mặc định (theo Cài đặt)", systemImage: "checkmark")
+							Label(xsignT("Mặc định (theo Cài đặt)", "Default (from Settings)"), systemImage: "checkmark")
 						} else {
-							Text("Mặc định (theo Cài đặt)")
+							Text(xsignT("Mặc định (theo Cài đặt)", "Default (from Settings)"))
 						}
 					}
 					ForEach(_certificates, id: \.objectID) { cert in
@@ -105,7 +105,7 @@ struct LibraryCellView: View {
 						Button {
 							_quickSignAndInstall(app, certificate: effectiveCert)
 						} label: {
-							Label("Ký & cài ngay", systemImage: "signature")
+							Label(xsignT("Ký & cài ngay", "Sign & Install Now"), systemImage: "signature")
 						}
 					}
 				}
@@ -238,7 +238,7 @@ extension LibraryCellView {
 	/// Menu tùy chọn dùng chung cho nhấn 1 lần và nhấn giữ.
 	@ViewBuilder
 	private func _menuActions(for app: AppInfoPresentable) -> some View {
-		Button("Xem thông tin", systemImage: "info.circle") {
+		Button(xsignT("Xem thông tin", "View Info"), systemImage: "info.circle") {
 			selectedInfoAppPresenting = AnyApp(base: app)
 		}
 		
@@ -256,7 +256,7 @@ extension LibraryCellView {
 		Divider()
 				let quickCertTitle: String = {
 			if _selectedAppCertURI != nil, let name = _effectiveCertificate()?.nickname, !name.isEmpty {
-				return "Ký & cài (\(name))"
+				return "\(xsignT("Ký & cài", "Sign & Install")) (\(name))"
 			}
 			return xsignT("Ký & cài", "Sign & Install")
 		}()
@@ -271,21 +271,21 @@ extension LibraryCellView {
 					}
 				}
 			} label: {
-				Label("Ký & cài bằng chứng chỉ…", systemImage: "checkmark.seal")
+				Label(xsignT("Ký & cài bằng chứng chỉ…", "Sign & Install with Certificate…"), systemImage: "checkmark.seal")
 			}
 		}
 		if app.isSigned {
-			Button("Ký lại", systemImage: "signature") {
+			Button(xsignT("Ký lại", "Re-sign"), systemImage: "signature") {
 				selectedSigningAppPresenting = AnyApp(base: app)
 			}
 		} else {
-			Button("Ký", systemImage: "signature") {
+			Button(xsignT("Ký", "Sign"), systemImage: "signature") {
 				selectedSigningAppPresenting = AnyApp(base: app)
 			}
 		}
 		
 		if app.isSigned {
-			Button("Cài đặt", systemImage: "square.and.arrow.down") {
+			Button(xsignT("Cài đặt", "Install"), systemImage: "square.and.arrow.down") {
 				selectedInstallAppPresenting = AnyApp(base: app)
 			}
 			if let id = app.identifier {
@@ -300,7 +300,7 @@ extension LibraryCellView {
 		
 		Divider()
 		
-		Button("Xóa", systemImage: "trash", role: .destructive) {
+		Button(xsignT("Xóa", "Delete"), systemImage: "trash", role: .destructive) {
 			Storage.shared.deleteApp(for: app)
 		}
 	}
