@@ -264,7 +264,15 @@ struct XSignPreset: Codable, Identifiable, Equatable {
 	var name: String
 	var isBuiltIn: Bool
 	var options: Options
-
+	var localizedName: String {
+		guard isBuiltIn else { return name }
+		switch name {
+			case "Mặc định": return xsignT("Mặc định", "Default")
+			case "Clone app": return xsignT("Clone app", "Clone App")
+			case "Không tweak": return xsignT("Không tweak", "No Tweaks")
+			default: return name
+		}
+	}
 	init(id: UUID = UUID(), name: String, isBuiltIn: Bool = false, options: Options) {
 		self.id = id
 		self.name = name
