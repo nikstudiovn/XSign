@@ -114,7 +114,7 @@ struct SourcesAddView: View {
 				}
 				
 				if !_filteredRecommendedSourcesData.isEmpty || _isLoadingRecommended || !_fallbackRecommendedURLs.isEmpty {
-					NBSection("Nguồn đề xuất") {
+					NBSection(xsignT("Nguồn đề xuất", "Recommended Sources")) {
 if _isLoadingRecommended && _filteredRecommendedSourcesData.isEmpty {
 HStack {
 ProgressView()
