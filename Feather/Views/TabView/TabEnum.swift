@@ -131,12 +131,16 @@ private var _listContent: some View {
 			if filteredItems.isEmpty {
 				Text(searchText.isEmpty ? "Thư mục trống" : "Không tìm thấy kết quả")
 					.foregroundStyle(.secondary)
+.listRowBackground(XSignLiquidGlassRowBackground())
 			} else {
 				ForEach(filteredItems, id: \.self) { url in
 _browserRow(for: url)
+.listRowBackground(XSignLiquidGlassRowBackground())
 }
 }
 }
+.scrollContentBackground(.hidden)
+.background(XSignLiquidGlassBackdrop())
 }
 
 @ViewBuilder
