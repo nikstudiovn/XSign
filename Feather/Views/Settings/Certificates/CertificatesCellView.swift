@@ -154,15 +154,15 @@ struct CertificatesCellView: View {
 
 	private var statusLabel: String {
 		if isRevoked {
-			return "Thu hồi OCSP"
+			return xsignT("Thu hồi OCSP", "OCSP Revoked")
 		}
 		if isExpired {
-			return "Hết hạn"
+			return xsignT("Hết hạn", "Expired")
 		}
 		if daysRemaining <= 7 {
-			return "Sắp hết hạn"
+			return xsignT("Sắp hết hạn", "Expiring Soon")
 		}
-		return "Còn hạn"
+		return xsignT("Còn hạn", "Valid")
 	}
 
 	private var statusColor: Color {
@@ -213,7 +213,7 @@ struct CertificatesCellView: View {
 					.tint(statusColor)
 
 				HStack(spacing: 8) {
-					Text(isExpired ? "Đã hết hạn" : "Còn \(daysRemaining) ngày")
+					Text(isExpired ? xsignT("Đã hết hạn", "Expired") : "Còn \(daysRemaining) ngày")
 						.font(.caption2)
 						.foregroundColor(.secondary)
 
@@ -230,7 +230,7 @@ struct CertificatesCellView: View {
 								Image(systemName: "checkmark.shield")
 									.font(.caption2)
 							}
-							Text("Kiểm tra OCSP")
+							Text(xsignT("Kiểm tra OCSP", "Check OCSP"))
 								.font(.caption2.weight(.medium))
 						}
 					}
