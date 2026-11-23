@@ -35,7 +35,7 @@ struct ExtendedTabbarView: View {
 					TabEnum.view(for: tab)
 				}
 			}
-			
+		
 			Tab(xsignT("Tìm kiếm",, "Search"), systemImage: "magnifyingglass", value: ExtendedTabSelection.search, role: .search) {
 				NavigationStack {
 					GlobalSearchView(onExitSearch: { _selectedTab = .tab(_lastNonSearchTab) })
